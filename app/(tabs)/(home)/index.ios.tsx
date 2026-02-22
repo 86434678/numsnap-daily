@@ -132,7 +132,7 @@ export default function HomeScreen() {
   if (authLoading || loading) {
     return (
       <>
-        <Stack.Screen options={{ title: "NumSnap Daily", headerShown: false }} />
+        <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background }]}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -147,7 +147,7 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "NumSnap Daily", headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         style={styles.gradient}
