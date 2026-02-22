@@ -25,7 +25,7 @@ export default function RulesScreen() {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>How to Play</Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            1. Each day at midnight UTC, a new random 6-digit target number (0-999999) is generated.
+            1. Each day at midnight UTC, a new random 6-digit target number (0-999999) is generated and kept hidden.
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
             2. Take ONE photo per day of any number you find in the real world (house numbers, license plates, receipts, signs, barcodes, etc.).
@@ -34,10 +34,35 @@ export default function RulesScreen() {
             3. Our AI will detect the number in your photo. You can confirm or edit it before submitting.
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            4. If your number exactly matches the daily target number, you win $25!
+            4. After submission, you&apos;ll see your result immediately:
+          </Text>
+          <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+            • If you match: Full number revealed with confetti! You win $25!
+          </Text>
+          <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+            • If you don&apos;t match: Only the last 3 digits are revealed (e.g., &quot;...789&quot;). Better luck tomorrow!
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
             5. If no one matches the number that day, there is no winner and no payout.
+          </Text>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Number Reveal System</Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            The daily target number is hidden until after you submit your entry. This ensures fair play and prevents cheating.
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            • Winners see the full number immediately with a celebration screen
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            • Non-winners see only the last 3 digits as a hint
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            • Your result includes a watermark with your username and submission time for verification
+          </Text>
+          <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+            • The full number for non-matches is revealed the next day
           </Text>
         </View>
 
@@ -53,7 +78,7 @@ export default function RulesScreen() {
             • Photos must be taken in real-world settings (no screenshots or digital displays)
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            • Winners are determined at the end of each day (midnight UTC)
+            • Winners are determined immediately upon submission
           </Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
             • Multiple winners split the prize equally if more than one person matches
@@ -99,7 +124,7 @@ export default function RulesScreen() {
         <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Anti-Fraud Measures</Text>
           <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-            We use GPS verification, photo metadata analysis, and AI detection to prevent fraud. Any suspicious activity may result in disqualification and account termination.
+            We use GPS verification, photo metadata analysis, AI detection, and partial number reveals to prevent fraud. Any suspicious activity may result in disqualification and account termination.
           </Text>
         </View>
 
@@ -157,6 +182,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 10,
+  },
+  bulletPoint: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 8,
+    marginLeft: 10,
   },
   footer: {
     fontSize: 12,

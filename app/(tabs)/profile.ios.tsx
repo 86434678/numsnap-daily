@@ -7,6 +7,7 @@ import { useTheme } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { useRouter } from "expo-router";
+import { authenticatedGet } from "@/utils/api";
 
 interface Submission {
   id: string;
@@ -41,22 +42,44 @@ export default function ProfileScreen() {
   }, [user]);
 
   const fetchUserData = async () => {
-    // TODO: Backend Integration - GET /api/my-stats → { currentStreak, longestStreak, totalSubmissions, totalWins }
-    // TODO: Backend Integration - GET /api/my-submissions → [{ id, date, photoUrl, confirmedNumber, targetNumber, isWinner }]
-    console.log('ProfileScreen: Fetching user data');
+    console.log('[API] Requesting /api/my-stats and /api/my-submissions...');
     setLoading(true);
     
     try {
-      // Placeholder data
+      const [statsData, submissionsData] = await Promise.all([
+        authenticatedGet<{
+          currentStreak: number;
+          longestStreak: number;
+          totalSubmissions: number;
+          totalWins: number;
+          recentSubmissions: { date: string; photoUrl: string; confirmedNumber: number; isWinner: boolean }[];
+        }>('/api/my-stats'),
+        authenticatedGet<{
+          id: string;
+          date: string;
+          photoUrl: string;
+          confirmedNumber: number;
+          targetNumber: number;
+          isWinner: boolean;
+          latitude: string;
+          longitude: string;
+        }[]>('/api/my-submissions'),
+      ]);
+
+      console.log('[API] /api/my-stats response:', statsData);
+      console.log('[API] /api/my-submissions response:', submissionsData);
+
       setStats({
-        currentStreak: 0,
-        longestStreak: 0,
-        totalSubmissions: 0,
-        totalWins: 0,
+        currentStreak: statsData.currentStreak,
+        longestStreak: statsData.longestStreak,
+        totalSubmissions: statsData.totalSubmissions,
+        totalWins: statsData.totalWins,
       });
-      setSubmissions([]);
+      setSubmissions(submissionsData || []);
     } catch (error) {
       console.error('ProfileScreen: Error fetching user data:', error);
+      setStats({ currentStreak: 0, longestStreak: 0, totalSubmissions: 0, totalWins: 0 });
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }

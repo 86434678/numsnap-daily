@@ -14,7 +14,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   
-  const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [timeUntilReset, setTimeUntilReset] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{ currentStreak: number; totalSubmissions: number; totalWins: number } | null>(null);
@@ -26,15 +25,14 @@ export default function HomeScreen() {
     console.log('[API] Requesting /api/daily-number...');
     setLoading(true);
     try {
-      const data = await apiGet<{ targetNumber: number; date: string; timeUntilReset: number }>(
+      const data = await authenticatedGet<{ hasSubmitted: boolean; date: string; timeUntilReset: number }>(
         '/api/daily-number'
       );
       console.log('[API] /api/daily-number response:', data);
-      setDailyNumber(data.targetNumber);
       setTimeUntilReset(data.timeUntilReset);
+      setHasSubmittedToday(data.hasSubmitted);
     } catch (error) {
       console.error('HomeScreen: Error fetching daily number:', error);
-      // Fallback: calculate time until midnight UTC locally
       const now = new Date();
       const midnight = new Date(now);
       midnight.setUTCHours(24, 0, 0, 0);
@@ -62,7 +60,6 @@ export default function HomeScreen() {
         totalWins: data.totalWins,
       });
 
-      // Check if user has already submitted today
       const today = new Date().toISOString().split('T')[0];
       const submittedToday = data.recentSubmissions?.some(
         (s) => s.date && s.date.startsWith(today)
@@ -75,7 +72,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       console.log('HomeScreen: Redirecting to auth screen');
@@ -114,6 +110,11 @@ export default function HomeScreen() {
     router.push('/camera');
   };
 
+  const handleViewResults = () => {
+    console.log('HomeScreen: User tapped View Results button');
+    router.push('/reveal-result');
+  };
+
   const handleViewWinners = () => {
     console.log('HomeScreen: User tapped View Winners button');
     router.push('/winners');
@@ -140,7 +141,6 @@ export default function HomeScreen() {
   }
 
   const timeDisplay = formatTime(timeUntilReset);
-  const dailyNumberDisplay = dailyNumber !== null ? String(dailyNumber).padStart(6, '0') : '------';
   const streakDisplay = stats?.currentStreak || 0;
   const submissionsDisplay = stats?.totalSubmissions || 0;
   const winsDisplay = stats?.totalWins || 0;
@@ -156,17 +156,21 @@ export default function HomeScreen() {
           style={styles.scrollView}
           contentContainerStyle={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}
         >
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.appTitle}>NumSnap</Text>
             <Text style={styles.appSubtitle}>Daily</Text>
           </View>
 
-          {/* Today's Number Card */}
           <View style={styles.numberCard}>
-            <Text style={styles.cardLabel}>Today's Number</Text>
-            <View style={styles.numberContainer}>
-              <Text style={styles.dailyNumber}>{dailyNumberDisplay}</Text>
+            <Text style={styles.cardLabel}>Today&apos;s Challenge</Text>
+            <View style={styles.hiddenNumberContainer}>
+              <IconSymbol 
+                ios_icon_name="eye.slash.fill" 
+                android_material_icon_name="visibility-off" 
+                size={40} 
+                color="rgba(255, 255, 255, 0.6)" 
+              />
+              <Text style={styles.hiddenText}>Number Hidden</Text>
             </View>
             <View style={styles.timerContainer}>
               <IconSymbol 
@@ -178,9 +182,9 @@ export default function HomeScreen() {
               <Text style={styles.timerText}>{timeDisplay}</Text>
             </View>
             <Text style={styles.timerLabel}>until next number</Text>
+            <Text style={styles.hintText}>Submit your snap to reveal!</Text>
           </View>
 
-          {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <IconSymbol 
@@ -214,7 +218,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Main Action Button */}
           {!hasSubmittedToday ? (
             <TouchableOpacity 
               style={styles.snapButton} 
@@ -237,19 +240,40 @@ export default function HomeScreen() {
               </LinearGradient>
             </TouchableOpacity>
           ) : (
-            <View style={styles.submittedCard}>
-              <IconSymbol 
-                ios_icon_name="checkmark.circle.fill" 
-                android_material_icon_name="check-circle" 
-                size={48} 
-                color={colors.success} 
-              />
-              <Text style={styles.submittedText}>Entry Submitted!</Text>
-              <Text style={styles.submittedSubtext}>Check back tomorrow for results</Text>
+            <View style={styles.submittedContainer}>
+              <View style={styles.submittedCard}>
+                <IconSymbol 
+                  ios_icon_name="checkmark.circle.fill" 
+                  android_material_icon_name="check-circle" 
+                  size={48} 
+                  color={colors.success} 
+                />
+                <Text style={styles.submittedText}>Entry Submitted!</Text>
+                <Text style={styles.submittedSubtext}>Tap below to see your result</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.viewResultsButton} 
+                onPress={handleViewResults}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.secondary, '#9B59B6']}
+                  style={styles.viewResultsGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <IconSymbol 
+                    ios_icon_name="eye.fill" 
+                    android_material_icon_name="visibility" 
+                    size={24} 
+                    color="#FFFFFF" 
+                  />
+                  <Text style={styles.viewResultsText}>View Your Result</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Secondary Actions */}
           <View style={styles.secondaryActions}>
             <TouchableOpacity style={styles.secondaryButton} onPress={handleViewWinners}>
               <IconSymbol 
@@ -271,7 +295,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Prize Info */}
           <View style={styles.prizeCard}>
             <Text style={styles.prizeAmount}>$25</Text>
             <Text style={styles.prizeLabel}>Daily Prize</Text>
@@ -331,24 +354,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 10,
   },
-  numberContainer: {
+  hiddenNumberContainer: {
     backgroundColor: colors.secondary,
     borderRadius: 15,
-    paddingHorizontal: 30,
-    paddingVertical: 15,
+    paddingHorizontal: 40,
+    paddingVertical: 25,
     marginBottom: 15,
-    shadowColor: colors.neonGlow,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
-    elevation: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 250,
   },
-  dailyNumber: {
-    fontSize: 56,
+  hiddenText: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 10,
+    letterSpacing: 2,
+  },
+  hintText: {
+    fontSize: 13,
+    color: colors.primary,
+    marginTop: 10,
+    fontWeight: '600',
   },
   timerContainer: {
     flexDirection: 'row',
@@ -418,12 +445,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  submittedContainer: {
+    marginBottom: 20,
+  },
   submittedCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   submittedText: {
     fontSize: 24,
@@ -435,6 +465,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 8,
+  },
+  viewResultsButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  viewResultsGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 10,
+  },
+  viewResultsText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   secondaryActions: {
     flexDirection: 'row',

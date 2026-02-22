@@ -20,7 +20,6 @@ export default function ConfirmSubmissionScreen() {
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
 
   console.log('ConfirmSubmissionScreen: Photo URI:', photoUri);
@@ -31,17 +30,14 @@ export default function ConfirmSubmissionScreen() {
     setLoading(true);
     
     try {
-      // Step 1: Upload the photo first to get a URL
       console.log('[API] Uploading photo to /api/upload-photo...');
       const formData = new FormData();
 
       if (Platform.OS === 'web') {
-        // On web, fetch the blob from the URI and append it
         const response = await fetch(photoUri);
         const blob = await response.blob();
         formData.append('photo', blob, 'photo.jpg');
       } else {
-        // On native, append the file URI directly
         formData.append('photo', {
           uri: photoUri,
           type: 'image/jpeg',
@@ -56,10 +52,8 @@ export default function ConfirmSubmissionScreen() {
       console.log('[API] /api/upload-photo response:', uploadResult);
       const uploadedPhotoUrl = uploadResult.photoUrl;
 
-      // Store the uploaded URL for later submission
       setUploadedPhotoUrl(uploadedPhotoUrl);
 
-      // Step 2: Run OCR on the uploaded photo
       console.log('[API] Requesting /api/process-ocr...');
       const ocrResult = await authenticatedPost<{ detectedNumber: number | null }>(
         '/api/process-ocr',
@@ -113,6 +107,7 @@ export default function ConfirmSubmissionScreen() {
       const result = await authenticatedPost<{
         success: boolean;
         submission: { id: string; confirmedNumber: number; isWinner: boolean };
+        revealData: { isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string };
       }>('/api/submit-entry', {
         photoUrl: uploadedPhotoUrl,
         detectedNumber: detectedNumber ? parseInt(detectedNumber, 10) : parseInt(confirmedNumber, 10),
@@ -124,21 +119,28 @@ export default function ConfirmSubmissionScreen() {
       console.log('[API] /api/submit-entry response:', result);
 
       if (result.success) {
-        console.log('ConfirmSubmissionScreen: Entry submitted successfully');
-        setShowSuccessModal(true);
-        
-        // Navigate back to home after showing success
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          router.replace('/');
-        }, 2500);
+        console.log('ConfirmSubmissionScreen: Entry submitted successfully, navigating to reveal screen');
+        // Pass revealData as params so reveal screen can show results immediately without extra API call
+        if (result.revealData) {
+          router.replace({
+            pathname: '/reveal-result',
+            params: {
+              isMatch: result.revealData.isMatch ? 'true' : 'false',
+              userNumber: String(result.revealData.userNumber),
+              targetNumber: result.revealData.targetNumber,
+              submissionTime: result.revealData.submissionTime,
+              userName: result.revealData.userName,
+            },
+          });
+        } else {
+          router.replace('/reveal-result');
+        }
       } else {
         setSubmitError('Submission failed. Please try again.');
       }
     } catch (error: any) {
       console.error('ConfirmSubmissionScreen: Error submitting entry:', error);
       const message = error?.message || 'Failed to submit entry. Please try again.';
-      // Check for "already submitted today" error
       if (message.includes('already submitted') || message.includes('one submission')) {
         setSubmitError('You have already submitted an entry today. Come back tomorrow!');
       } else {
@@ -161,12 +163,10 @@ export default function ConfirmSubmissionScreen() {
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Photo Preview */}
         <View style={styles.photoContainer}>
           <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
         </View>
 
-        {/* OCR Detection */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -181,7 +181,6 @@ export default function ConfirmSubmissionScreen() {
               </View>
             </View>
 
-            {/* Editable Number Input */}
             <View style={styles.inputCard}>
               <Text style={styles.inputLabel}>Confirm or Edit Number:</Text>
               <TextInput
@@ -198,7 +197,6 @@ export default function ConfirmSubmissionScreen() {
               </Text>
             </View>
 
-            {/* Number Display */}
             <View style={styles.displayCard}>
               <Text style={styles.displayLabel}>Your Entry:</Text>
               <View style={styles.displayNumberContainer}>
@@ -206,7 +204,6 @@ export default function ConfirmSubmissionScreen() {
               </View>
             </View>
 
-            {/* Error Message */}
             {submitError ? (
               <View style={styles.errorCard}>
                 <IconSymbol 
@@ -219,7 +216,6 @@ export default function ConfirmSubmissionScreen() {
               </View>
             ) : null}
 
-            {/* Submit Button */}
             <TouchableOpacity 
               style={[styles.submitButton, (!confirmedNumber || submitting) && styles.submitButtonDisabled]} 
               onPress={handleSubmit}
@@ -245,7 +241,6 @@ export default function ConfirmSubmissionScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Location Info */}
             <View style={styles.locationCard}>
               <IconSymbol 
                 ios_icon_name="location.fill" 
@@ -260,26 +255,6 @@ export default function ConfirmSubmissionScreen() {
           </>
         )}
       </ScrollView>
-
-      {/* Success Modal */}
-      <Modal
-        visible={showSuccessModal}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <IconSymbol 
-              ios_icon_name="checkmark.circle.fill" 
-              android_material_icon_name="check-circle" 
-              size={80} 
-              color={colors.success} 
-            />
-            <Text style={styles.modalTitle}>Entry Submitted!</Text>
-            <Text style={styles.modalSubtitle}>Good luck! Check back tomorrow for results.</Text>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -445,30 +420,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.error,
     fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 40,
-    alignItems: 'center',
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.success,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
 });

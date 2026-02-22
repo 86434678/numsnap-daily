@@ -128,6 +128,9 @@ export default function RootLayout() {
                 {/* Rules screen */}
                 <Stack.Screen name="rules" options={{ headerShown: true, title: "Official Rules" }} />
                 
+                {/* Reveal result screen */}
+                <Stack.Screen name="reveal-result" options={{ headerShown: false, presentation: "modal" }} />
+                
                 {/* 404 */}
                 <Stack.Screen name="+not-found" options={{ title: "Oops!" }} />
               </Stack>
