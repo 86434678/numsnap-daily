@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Platform, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -9,132 +9,101 @@ import { colors } from '@/styles/commonStyles';
 
 export default function CameraScreen() {
   const router = useRouter();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
-  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string; showSettings?: boolean }>({
     visible: false,
     title: '',
     message: '',
+    showSettings: false,
   });
 
-  const showAlert = (title: string, message: string) => {
-    setAlertModal({ visible: true, title, message });
+  const showAlert = (title: string, message: string, showSettings = false) => {
+    setAlertModal({ visible: true, title, message, showSettings });
   };
 
   const hideAlert = () => {
-    setAlertModal({ visible: false, title: '', message: '' });
+    setAlertModal({ visible: false, title: '', message: '', showSettings: false });
   };
 
   console.log('CameraScreen: Component mounted');
 
   useEffect(() => {
-    const checkAndRequestPermissions = async () => {
-      console.log('CameraScreen: Checking permissions');
-      setIsCheckingPermissions(true);
-      
+    const checkLocationPermission = async () => {
+      console.log('CameraScreen: Checking location permission on mount');
       try {
-        // Check current permissions first
-        const cameraPermission = await ImagePicker.getCameraPermissionsAsync();
         const locationPermissionStatus = await Location.getForegroundPermissionsAsync();
-        
-        console.log('CameraScreen: Current camera permission:', cameraPermission.status);
         console.log('CameraScreen: Current location permission:', locationPermissionStatus.status);
-        
-        // If not granted, request them
-        if (cameraPermission.status !== 'granted') {
-          console.log('CameraScreen: Requesting camera permission');
-          const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
-          console.log('CameraScreen: Camera permission result:', cameraResult.status);
-          setHasPermission(cameraResult.granted);
-          
-          if (!cameraResult.granted) {
-            showAlert('Permission Required', 'Camera access is required to take photos. Please enable it in your device settings.');
-          }
-        } else {
-          setHasPermission(true);
-        }
-        
-        if (locationPermissionStatus.status !== 'granted') {
-          console.log('CameraScreen: Requesting location permission');
-          const locationResult = await Location.requestForegroundPermissionsAsync();
-          console.log('CameraScreen: Location permission result:', locationResult.status);
-          setLocationPermission(locationResult.granted);
-          
-          if (!locationResult.granted) {
-            showAlert('Permission Required', 'Location access is required for entry verification. Please enable it in your device settings.');
-          }
-        } else {
-          setLocationPermission(true);
-        }
+        setLocationPermission(locationPermissionStatus.granted);
       } catch (error) {
-        console.error('CameraScreen: Error checking permissions:', error);
-        setHasPermission(false);
+        console.error('CameraScreen: Error checking location permission:', error);
         setLocationPermission(false);
-        showAlert('Error', 'Failed to check permissions. Please try again.');
-      } finally {
-        setIsCheckingPermissions(false);
-        console.log('CameraScreen: Permission check complete');
       }
     };
 
-    checkAndRequestPermissions();
+    checkLocationPermission();
   }, []);
 
-  const requestPermissionsAgain = async () => {
-    console.log('CameraScreen: User tapped Grant Permissions button');
-    setIsCheckingPermissions(true);
+  const requestLocationAndOpenCamera = async () => {
+    console.log('CameraScreen: User tapped Take Photo button');
+    
+    // Step 1: Request location permission first
+    setIsRequestingLocation(true);
     
     try {
-      console.log('CameraScreen: Requesting camera permission');
-      const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
-      console.log('CameraScreen: Camera permission result:', cameraResult.status);
-      setHasPermission(cameraResult.granted);
-      
-      if (!cameraResult.granted) {
-        showAlert('Permission Required', 'Camera access is required. Please enable it in your device settings.');
-      }
-      
       console.log('CameraScreen: Requesting location permission');
       const locationResult = await Location.requestForegroundPermissionsAsync();
       console.log('CameraScreen: Location permission result:', locationResult.status);
-      setLocationPermission(locationResult.granted);
       
       if (!locationResult.granted) {
-        showAlert('Permission Required', 'Location access is required. Please enable it in your device settings.');
+        console.log('CameraScreen: Location permission denied');
+        setLocationPermission(false);
+        setIsRequestingLocation(false);
+        
+        // Show alert with option to open settings
+        showAlert(
+          'Location Required',
+          'You must share your location to participate. Please enable location access in your device settings.',
+          true
+        );
+        return;
       }
-    } catch (error) {
-      console.error('CameraScreen: Error requesting permissions:', error);
-      showAlert('Error', 'Failed to request permissions. Please try again.');
-    } finally {
-      setIsCheckingPermissions(false);
-    }
-  };
-
-  const capturePhoto = async () => {
-    console.log('CameraScreen: User tapped Take Photo button');
-    
-    if (!hasPermission) {
-      showAlert('Permission Required', 'Please grant camera permission to continue.');
-      return;
-    }
-    
-    if (!locationPermission) {
-      showAlert('Permission Required', 'Please grant location permission to continue.');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
+      
+      // Location permission granted
+      console.log('CameraScreen: Location permission granted');
+      setLocationPermission(true);
+      
+      // Step 2: Get current location
       console.log('CameraScreen: Getting current location');
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
       const latitude = location.coords.latitude;
       const longitude = location.coords.longitude;
       console.log('CameraScreen: Location obtained:', latitude, longitude);
-
+      
+      setIsRequestingLocation(false);
+      
+      // Step 3: Now request camera permission and open camera
+      console.log('CameraScreen: Requesting camera permission');
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('CameraScreen: Camera permission result:', cameraPermission.status);
+      
+      if (!cameraPermission.granted) {
+        console.log('CameraScreen: Camera permission denied');
+        showAlert(
+          'Camera Required',
+          'Camera access is required to take photos. Please enable it in your device settings.',
+          true
+        );
+        return;
+      }
+      
+      // Step 4: Open camera
+      setIsCapturingPhoto(true);
       console.log('CameraScreen: Launching camera');
+      
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: 'images',
         allowsEditing: true,
@@ -142,7 +111,7 @@ export default function CameraScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        console.log('CameraScreen: Photo captured, navigating to confirmation');
+        console.log('CameraScreen: Photo captured successfully, navigating to confirmation');
         const photoUri = result.assets[0].uri;
         
         router.push({
@@ -154,30 +123,28 @@ export default function CameraScreen() {
           },
         });
       } else {
-        console.log('CameraScreen: Photo capture cancelled');
+        console.log('CameraScreen: Photo capture cancelled by user');
       }
     } catch (error) {
-      console.error('CameraScreen: Error capturing photo:', error);
+      console.error('CameraScreen: Error in photo capture flow:', error);
       showAlert('Error', 'Failed to capture photo. Please try again.');
     } finally {
-      setLoading(false);
+      setIsRequestingLocation(false);
+      setIsCapturingPhoto(false);
     }
   };
 
-  if (isCheckingPermissions) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Checking permissions...</Text>
-      </View>
-    );
-  }
+  const handleOpenSettings = () => {
+    console.log('CameraScreen: User tapped Open Settings');
+    hideAlert();
+    Linking.openSettings();
+  };
 
-  const bothPermissionsGranted = hasPermission && locationPermission;
-  const permissionStatusText = !hasPermission 
-    ? 'Camera permission is required' 
-    : !locationPermission 
-    ? 'Location permission is required' 
+  const isLoading = isRequestingLocation || isCapturingPhoto;
+  const loadingText = isRequestingLocation 
+    ? 'Requesting location permission...' 
+    : isCapturingPhoto 
+    ? 'Opening camera...' 
     : '';
 
   return (
@@ -192,9 +159,24 @@ export default function CameraScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{alertModal.title}</Text>
             <Text style={styles.modalMessage}>{alertModal.message}</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
-              <Text style={styles.modalButtonText}>OK</Text>
-            </TouchableOpacity>
+            <View style={styles.modalButtonContainer}>
+              {alertModal.showSettings && (
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.modalButtonPrimary]} 
+                  onPress={handleOpenSettings}
+                >
+                  <Text style={styles.modalButtonText}>Open Settings</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={[styles.modalButton, alertModal.showSettings ? styles.modalButtonSecondary : styles.modalButtonPrimary]} 
+                onPress={hideAlert}
+              >
+                <Text style={[styles.modalButtonText, alertModal.showSettings && styles.modalButtonTextSecondary]}>
+                  {alertModal.showSettings ? 'Cancel' : 'OK'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -223,7 +205,7 @@ export default function CameraScreen() {
           <Text style={styles.exampleText}>• Product barcodes</Text>
         </View>
 
-        {!bothPermissionsGranted && (
+        {locationPermission === false && !isLoading && (
           <View style={styles.warningContainer}>
             <IconSymbol 
               ios_icon_name="exclamationmark.triangle.fill" 
@@ -231,52 +213,47 @@ export default function CameraScreen() {
               size={24} 
               color={colors.error} 
             />
-            <Text style={styles.warningText}>{permissionStatusText}</Text>
+            <Text style={styles.warningText}>
+              Location permission is required to participate
+            </Text>
           </View>
         )}
 
         <View style={styles.buttonContainer}>
-          {bothPermissionsGranted ? (
-            <TouchableOpacity 
-              style={[styles.button, styles.primaryButton]} 
-              onPress={capturePhoto}
-              disabled={loading}
-            >
-              {loading ? (
+          <TouchableOpacity 
+            style={[styles.button, styles.primaryButton]} 
+            onPress={requestLocationAndOpenCamera}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
                 <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <IconSymbol 
-                    ios_icon_name="camera.fill" 
-                    android_material_icon_name="photo-camera" 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                  <Text style={styles.buttonText}>Take Photo</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              style={[styles.button, styles.permissionButton]} 
-              onPress={requestPermissionsAgain}
-              disabled={isCheckingPermissions}
-            >
-              {isCheckingPermissions ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <IconSymbol 
-                    ios_icon_name="lock.open.fill" 
-                    android_material_icon_name="lock-open" 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                  <Text style={styles.buttonText}>Grant Permissions</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
+                <Text style={styles.loadingButtonText}>{loadingText}</Text>
+              </View>
+            ) : (
+              <>
+                <IconSymbol 
+                  ios_icon_name="camera.fill" 
+                  android_material_icon_name="photo-camera" 
+                  size={24} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.buttonText}>Take Photo</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.infoContainer}>
+          <IconSymbol 
+            ios_icon_name="info.circle.fill" 
+            android_material_icon_name="info" 
+            size={20} 
+            color={colors.textSecondary} 
+          />
+          <Text style={styles.infoText}>
+            Location is required to verify your entry
+          </Text>
         </View>
       </View>
     </View>
@@ -365,18 +342,31 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.primary,
   },
-  permissionButton: {
-    backgroundColor: colors.error,
-  },
   buttonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  loadingText: {
-    marginTop: 10,
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingButtonText: {
     fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 13,
     color: colors.textSecondary,
+    fontStyle: 'italic',
   },
   modalOverlay: {
     flex: 1,
@@ -405,15 +395,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 22,
   },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
   modalButton: {
-    backgroundColor: '#007AFF',
+    flex: 1,
     borderRadius: 10,
     paddingVertical: 12,
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#007AFF',
+  },
+  modalButtonSecondary: {
+    backgroundColor: '#E5E5EA',
   },
   modalButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalButtonTextSecondary: {
+    color: '#000',
   },
 });
