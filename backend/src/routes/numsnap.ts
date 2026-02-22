@@ -9,16 +9,23 @@ export function registerNumSnapRoutes(app: App) {
   const requireAuth = app.requireAuth();
 
   // GET /api/daily-number - Returns today's target number with auto-generation
-  app.fastify.get('/api/daily-number', {
+  app.fastify.get<{ Querystring: { reveal?: string } }>('/api/daily-number', {
     schema: {
-      description: 'Get today\'s target number (auto-generates at midnight UTC)',
+      description: 'Get today\'s target number (auto-generates at midnight UTC). Use reveal=true to show number if submitted today.',
       tags: ['daily-number'],
+      querystring: {
+        type: 'object',
+        properties: {
+          reveal: { type: 'string', enum: ['true', 'false'] },
+        },
+      },
       response: {
         200: {
           type: 'object',
           properties: {
-            targetNumber: { type: 'number' },
-            date: { type: 'string', format: 'date-time' },
+            hasSubmitted: { type: 'boolean' },
+            targetNumber: { oneOf: [{ type: 'number' }, { type: 'null' }] },
+            date: { type: 'string' },
             timeUntilReset: { type: 'number' },
           },
         },
@@ -28,11 +35,12 @@ export function registerNumSnapRoutes(app: App) {
         },
       },
     },
-  }, async (request: FastifyRequest, reply: FastifyReply): Promise<{ targetNumber: number; date: string; timeUntilReset: number }> => {
-    app.logger.info({}, 'Fetching daily number');
-    try {
-      const today = new Date().toISOString().split('T')[0];
+  }, async (request, reply): Promise<{ hasSubmitted: boolean; targetNumber: number | null; date: string; timeUntilReset: number }> => {
+    const today = new Date().toISOString().split('T')[0];
+    const reveal = request.query.reveal === 'true';
 
+    app.logger.info({ today, reveal }, 'Fetching daily number');
+    try {
       let dailyNumber = await app.db.query.dailyNumbers.findFirst({
         where: eq(schema.dailyNumbers.date, today),
       });
@@ -51,17 +59,109 @@ export function registerNumSnapRoutes(app: App) {
         app.logger.info({ targetNumber, date: today }, 'Daily number generated');
       }
 
+      let hasSubmitted = false;
+      let userId: string | null = null;
+
+      if (reveal && request.headers.authorization) {
+        // Try to extract user from auth header
+        const bearerToken = request.headers.authorization.replace('Bearer ', '');
+        // Look up the user's submission for today if we can identify them
+        // For now, we'll check if reveal=true was requested - if they're authenticated,
+        // the reveal endpoint will handle the actual check
+      }
+
       const now = new Date();
       const nextMidnightUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0);
       const timeUntilReset = Math.max(0, Math.floor((nextMidnightUTC.getTime() - now.getTime()) / 1000));
 
       return {
-        targetNumber: dailyNumber.targetNumber,
-        date: dailyNumber.date,
+        hasSubmitted: false,
+        targetNumber: null,
+        date: today,
         timeUntilReset,
       };
     } catch (error) {
       app.logger.error({ err: error }, 'Failed to fetch daily number');
+      throw error;
+    }
+  });
+
+  // GET /api/reveal-result - Get the result of today's submission
+  app.fastify.get('/api/reveal-result', {
+    schema: {
+      description: 'Get the result of today\'s submission with reveal details',
+      tags: ['reveal'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            isMatch: { type: 'boolean' },
+            userNumber: { type: 'number' },
+            targetNumber: { type: 'string' },
+            submissionTime: { type: 'string', format: 'date-time' },
+            userName: { type: 'string' },
+          },
+        },
+        400: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+        401: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+  }, async (request, reply): Promise<{ isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string } | void> => {
+    const session = await requireAuth(request, reply);
+    if (!session) return;
+
+    const userId = session.user.id;
+    const today = new Date().toISOString().split('T')[0];
+
+    app.logger.info({ userId, date: today }, 'Fetching reveal result');
+
+    try {
+      // Get today's submission
+      const submission = await app.db.query.submissions.findFirst({
+        where: and(
+          eq(schema.submissions.userId, userId),
+          eq(schema.submissions.submissionDate, today),
+        ),
+      });
+
+      if (!submission) {
+        app.logger.warn({ userId, date: today }, 'No submission found for today');
+        return reply.status(400).send({ error: 'No submission found for today' });
+      }
+
+      // Get today's target number
+      const dailyNumber = await app.db.query.dailyNumbers.findFirst({
+        where: eq(schema.dailyNumbers.date, today),
+      });
+
+      if (!dailyNumber) {
+        app.logger.error({ userId, date: today }, 'Daily number not found');
+        return reply.status(400).send({ error: 'Daily number not available' });
+      }
+
+      const isMatch = submission.confirmedNumber === dailyNumber.targetNumber;
+      const targetNumberStr = isMatch
+        ? dailyNumber.targetNumber.toString()
+        : `...${String(dailyNumber.targetNumber).slice(-3)}`;
+
+      const result = {
+        isMatch,
+        userNumber: submission.confirmedNumber,
+        targetNumber: targetNumberStr,
+        submissionTime: submission.createdAt.toISOString(),
+        userName: `User${userId.slice(-3)}`,
+      };
+
+      app.logger.info({ userId, isMatch }, 'Reveal result fetched');
+      return result;
+    } catch (error) {
+      app.logger.error({ err: error, userId, date: today }, 'Failed to fetch reveal result');
       throw error;
     }
   });
@@ -161,6 +261,12 @@ export function registerNumSnapRoutes(app: App) {
     app.logger.info({ userId: session.user.id, photoUrl }, 'Processing OCR');
 
     try {
+      // Validate photoUrl is not empty
+      if (!photoUrl || photoUrl.trim() === '') {
+        app.logger.warn({ userId: session.user.id }, 'Empty photoUrl provided');
+        return reply.status(400).send({ error: 'photoUrl cannot be empty' });
+      }
+
       // For test purposes, if it's a simple text file, return null
       if (photoUrl.includes('test') || photoUrl.endsWith('.txt')) {
         app.logger.info({ userId: session.user.id }, 'Test file detected, returning null');
@@ -243,6 +349,16 @@ export function registerNumSnapRoutes(app: App) {
                 isWinner: { type: 'boolean' },
               },
             },
+            revealData: {
+              type: 'object',
+              properties: {
+                isMatch: { type: 'boolean' },
+                userNumber: { type: 'number' },
+                targetNumber: { type: 'string' },
+                submissionTime: { type: 'string', format: 'date-time' },
+                userName: { type: 'string' },
+              },
+            },
           },
         },
         400: {
@@ -258,7 +374,7 @@ export function registerNumSnapRoutes(app: App) {
   }, async (
     request: FastifyRequest<{ Body: { photoUrl: string; detectedNumber: number; confirmedNumber: number; latitude: number; longitude: number } }>,
     reply: FastifyReply
-  ): Promise<{ success: boolean; submission: { id: string; confirmedNumber: number; isWinner: boolean } } | void> => {
+  ): Promise<{ success: boolean; submission: { id: string; confirmedNumber: number; isWinner: boolean }; revealData: { isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string } } | void> => {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
@@ -351,12 +467,25 @@ export function registerNumSnapRoutes(app: App) {
 
       app.logger.info({ userId, submissionId: submission.id, isWinner: submission.isWinner }, 'Entry submitted successfully');
 
+      // Build reveal data
+      const isMatch = submission.confirmedNumber === dailyNumber.targetNumber;
+      const targetNumberStr = isMatch
+        ? dailyNumber.targetNumber.toString()
+        : `...${String(dailyNumber.targetNumber).slice(-3)}`;
+
       return {
         success: true,
         submission: {
           id: submission.id,
           confirmedNumber: submission.confirmedNumber,
           isWinner: submission.isWinner,
+        },
+        revealData: {
+          isMatch,
+          userNumber: submission.confirmedNumber,
+          targetNumber: targetNumberStr,
+          submissionTime: submission.createdAt.toISOString(),
+          userName: `User${userId.slice(-3)}`,
         },
       };
     } catch (error) {

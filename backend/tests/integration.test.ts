@@ -7,14 +7,31 @@ describe("API Integration Tests", () => {
   let photoUrl: string;
 
   describe("Daily Number", () => {
-    test("Get today's target number", async () => {
+    test("Get today's target number without reveal", async () => {
       const res = await api("/api/daily-number");
       await expectStatus(res, 200);
       const data = await res.json();
       expect(data.targetNumber).toBeDefined();
       expect(data.date).toBeDefined();
       expect(data.timeUntilReset).toBeDefined();
-      expect(typeof data.targetNumber).toBe("number");
+      expect(data.hasSubmitted).toBeDefined();
+    });
+
+    test("Get today's target number with reveal=false", async () => {
+      const res = await api("/api/daily-number?reveal=false");
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.targetNumber).toBeDefined();
+      expect(data.date).toBeDefined();
+      expect(data.timeUntilReset).toBeDefined();
+    });
+
+    test("Get today's target number with reveal=true", async () => {
+      const res = await api("/api/daily-number?reveal=true");
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.targetNumber).toBeDefined();
+      expect(data.date).toBeDefined();
     });
   });
 
@@ -51,6 +68,15 @@ describe("API Integration Tests", () => {
       });
       await expectStatus(res, 401);
     });
+
+    test("Upload photo with missing file returns 400", async () => {
+      const form = new FormData();
+      const res = await authenticatedApi("/api/upload-photo", authToken, {
+        method: "POST",
+        body: form,
+      });
+      await expectStatus(res, 400);
+    });
   });
 
   describe("OCR Processing", () => {
@@ -83,6 +109,17 @@ describe("API Integration Tests", () => {
         body: JSON.stringify({ photoUrl: "http://example.com/photo.jpg" }),
       });
       await expectStatus(res, 401);
+    });
+
+    test("Process OCR with invalid photoUrl returns 400", async () => {
+      const res = await authenticatedApi("/api/process-ocr", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrl: "",
+        }),
+      });
+      await expectStatus(res, 400);
     });
   });
 
@@ -123,6 +160,62 @@ describe("API Integration Tests", () => {
       await expectStatus(res, 400);
     });
 
+    test("Submit entry without required detectedNumber returns 400", async () => {
+      const res = await authenticatedApi("/api/submit-entry", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrl: photoUrl,
+          confirmedNumber: 42,
+          latitude: 40.7128,
+          longitude: -74.006,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Submit entry without required confirmedNumber returns 400", async () => {
+      const res = await authenticatedApi("/api/submit-entry", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrl: photoUrl,
+          detectedNumber: 42,
+          latitude: 40.7128,
+          longitude: -74.006,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Submit entry without required latitude returns 400", async () => {
+      const res = await authenticatedApi("/api/submit-entry", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrl: photoUrl,
+          detectedNumber: 42,
+          confirmedNumber: 42,
+          longitude: -74.006,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Submit entry without required longitude returns 400", async () => {
+      const res = await authenticatedApi("/api/submit-entry", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrl: photoUrl,
+          detectedNumber: 42,
+          confirmedNumber: 42,
+          latitude: 40.7128,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
     test("Submit entry without auth returns 401", async () => {
       const res = await api("/api/submit-entry", {
         method: "POST",
@@ -155,6 +248,34 @@ describe("API Integration Tests", () => {
     test("Get submissions without auth returns 401", async () => {
       const res = await api("/api/my-submissions");
       await expectStatus(res, 401);
+    });
+  });
+
+  describe("Reveal Result", () => {
+    test("Get reveal result after submission", async () => {
+      const res = await authenticatedApi("/api/reveal-result", authToken);
+      await expectStatus(res, 200, 400);
+      const data = await res.json();
+      if (res.status === 200) {
+        expect(data.isMatch).toBeDefined();
+        expect(data.userNumber).toBeDefined();
+        expect(data.targetNumber).toBeDefined();
+        expect(data.submissionTime).toBeDefined();
+        expect(data.userName).toBeDefined();
+      } else {
+        expect(data.error).toBeDefined();
+      }
+    });
+
+    test("Get reveal result without auth returns 401", async () => {
+      const res = await api("/api/reveal-result");
+      await expectStatus(res, 401);
+    });
+
+    test("Get reveal result without submission returns 400", async () => {
+      const { token } = await signUpTestUser();
+      const res = await authenticatedApi("/api/reveal-result", token);
+      await expectStatus(res, 400);
     });
   });
 
