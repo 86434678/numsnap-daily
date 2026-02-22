@@ -17,6 +17,7 @@ export const submissions = pgTable('submissions', {
   longitude: numeric('longitude', { precision: 11, scale: 8 }),
   submissionDate: date('submission_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  revealTimePST: timestamp('reveal_time_pst', { withTimezone: true }),
   isWinner: boolean('is_winner').default(false).notNull(),
 });
 

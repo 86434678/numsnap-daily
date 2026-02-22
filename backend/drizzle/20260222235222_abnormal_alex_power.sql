@@ -1,0 +1,1 @@
+ALTER TABLE "submissions" ADD COLUMN "reveal_time_pst" timestamp with time zone;

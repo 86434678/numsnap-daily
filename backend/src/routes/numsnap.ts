@@ -4,14 +4,15 @@ import { gateway } from '@specific-dev/framework';
 import { generateText } from 'ai';
 import * as schema from '../db/schema/schema.js';
 import type { App } from '../index.js';
+import { getTodayPST, formatAsPST, secondsUntilMidnightPST, getMidnightTomorrowPST, getCurrentTimePST, isLocationInContinentalUS } from '../utils/timezone.js';
 
 export function registerNumSnapRoutes(app: App) {
   const requireAuth = app.requireAuth();
 
-  // GET /api/daily-number - Returns today's target number with auto-generation
+  // GET /api/daily-number - Returns today's target number with auto-generation (PST timezone)
   app.fastify.get<{ Querystring: { reveal?: string } }>('/api/daily-number', {
     schema: {
-      description: 'Get today\'s target number (auto-generates at midnight UTC). Use reveal=true to show number if submitted today.',
+      description: 'Get today\'s target number (auto-generates at midnight PST). Use reveal=true to show number if submitted today.',
       tags: ['daily-number'],
       querystring: {
         type: 'object',
@@ -27,6 +28,8 @@ export function registerNumSnapRoutes(app: App) {
             targetNumber: { oneOf: [{ type: 'number' }, { type: 'null' }] },
             date: { type: 'string' },
             timeUntilReset: { type: 'number' },
+            revealTimePST: { type: 'string', format: 'date-time' },
+            currentTimePST: { type: 'string', format: 'date-time' },
           },
         },
         500: {
@@ -35,50 +38,41 @@ export function registerNumSnapRoutes(app: App) {
         },
       },
     },
-  }, async (request, reply): Promise<{ hasSubmitted: boolean; targetNumber: number | null; date: string; timeUntilReset: number }> => {
-    const today = new Date().toISOString().split('T')[0];
+  }, async (request, reply): Promise<{ hasSubmitted: boolean; targetNumber: number | null; date: string; timeUntilReset: number; revealTimePST: string; currentTimePST: string }> => {
+    const todayPST = getTodayPST();
     const reveal = request.query.reveal === 'true';
+    const currentTimePST = formatAsPST(new Date());
 
-    app.logger.info({ today, reveal }, 'Fetching daily number');
+    app.logger.info({ todayPST, reveal }, 'Fetching daily number');
     try {
       let dailyNumber = await app.db.query.dailyNumbers.findFirst({
-        where: eq(schema.dailyNumbers.date, today),
+        where: eq(schema.dailyNumbers.date, todayPST),
       });
 
       if (!dailyNumber) {
-        app.logger.info({ date: today }, 'Generating new daily number');
+        app.logger.info({ date: todayPST }, 'Generating new daily number');
         const targetNumber = Math.floor(Math.random() * 1000000);
         const inserted = await app.db
           .insert(schema.dailyNumbers)
           .values({
             targetNumber,
-            date: today,
+            date: todayPST,
           })
           .returning();
         dailyNumber = inserted[0];
-        app.logger.info({ targetNumber, date: today }, 'Daily number generated');
+        app.logger.info({ targetNumber, date: todayPST }, 'Daily number generated');
       }
 
-      let hasSubmitted = false;
-      let userId: string | null = null;
-
-      if (reveal && request.headers.authorization) {
-        // Try to extract user from auth header
-        const bearerToken = request.headers.authorization.replace('Bearer ', '');
-        // Look up the user's submission for today if we can identify them
-        // For now, we'll check if reveal=true was requested - if they're authenticated,
-        // the reveal endpoint will handle the actual check
-      }
-
-      const now = new Date();
-      const nextMidnightUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0);
-      const timeUntilReset = Math.max(0, Math.floor((nextMidnightUTC.getTime() - now.getTime()) / 1000));
+      const timeUntilReset = secondsUntilMidnightPST();
+      const revealTimePST = formatAsPST(getMidnightTomorrowPST());
 
       return {
         hasSubmitted: false,
         targetNumber: null,
-        date: today,
+        date: todayPST,
         timeUntilReset,
+        revealTimePST,
+        currentTimePST,
       };
     } catch (error) {
       app.logger.error({ err: error }, 'Failed to fetch daily number');
@@ -117,31 +111,31 @@ export function registerNumSnapRoutes(app: App) {
     if (!session) return;
 
     const userId = session.user.id;
-    const today = new Date().toISOString().split('T')[0];
+    const todayPST = getTodayPST();
 
-    app.logger.info({ userId, date: today }, 'Fetching reveal result');
+    app.logger.info({ userId, date: todayPST }, 'Fetching reveal result');
 
     try {
       // Get today's submission
       const submission = await app.db.query.submissions.findFirst({
         where: and(
           eq(schema.submissions.userId, userId),
-          eq(schema.submissions.submissionDate, today),
+          eq(schema.submissions.submissionDate, todayPST),
         ),
       });
 
       if (!submission) {
-        app.logger.warn({ userId, date: today }, 'No submission found for today');
+        app.logger.warn({ userId, date: todayPST }, 'No submission found for today');
         return reply.status(400).send({ error: 'No submission found for today' });
       }
 
       // Get today's target number
       const dailyNumber = await app.db.query.dailyNumbers.findFirst({
-        where: eq(schema.dailyNumbers.date, today),
+        where: eq(schema.dailyNumbers.date, todayPST),
       });
 
       if (!dailyNumber) {
-        app.logger.error({ userId, date: today }, 'Daily number not found');
+        app.logger.error({ userId, date: todayPST }, 'Daily number not found');
         return reply.status(400).send({ error: 'Daily number not available' });
       }
 
@@ -161,7 +155,7 @@ export function registerNumSnapRoutes(app: App) {
       app.logger.info({ userId, isMatch }, 'Reveal result fetched');
       return result;
     } catch (error) {
-      app.logger.error({ err: error, userId, date: today }, 'Failed to fetch reveal result');
+      app.logger.error({ err: error, userId, date: todayPST }, 'Failed to fetch reveal result');
       throw error;
     }
   });
@@ -198,7 +192,7 @@ export function registerNumSnapRoutes(app: App) {
 
     app.logger.info({ userId: session.user.id }, 'Uploading photo');
     try {
-      const data = await request.file({ limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB limit
+      const data = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
       if (!data) {
         app.logger.warn({ userId: session.user.id }, 'No file provided');
         return reply.status(400).send({ error: 'No file provided' });
@@ -380,33 +374,42 @@ export function registerNumSnapRoutes(app: App) {
 
     const { photoUrl, detectedNumber, confirmedNumber, latitude, longitude } = request.body;
     const userId = session.user.id;
-    const today = new Date().toISOString().split('T')[0];
+    const todayPST = getTodayPST();
 
-    app.logger.info({ userId, date: today }, 'Submitting entry');
+    app.logger.info({ userId, date: todayPST }, 'Submitting entry');
 
     try {
+      // FIRST CHECK: Validate geographic location
+      if (!isLocationInContinentalUS(latitude, longitude)) {
+        app.logger.warn({ userId, latitude, longitude }, 'Location outside continental US');
+        return reply.status(400).send({ error: 'Submissions are only accepted from the continental United States. Your location is outside the eligible area.' });
+      }
+
       // Check if user already submitted today
       const existingSubmission = await app.db.query.submissions.findFirst({
         where: and(
           eq(schema.submissions.userId, userId),
-          eq(schema.submissions.submissionDate, today),
+          eq(schema.submissions.submissionDate, todayPST),
         ),
       });
 
       if (existingSubmission) {
-        app.logger.warn({ userId, date: today }, 'User already submitted today');
+        app.logger.warn({ userId, date: todayPST }, 'User already submitted today');
         return reply.status(400).send({ error: 'You have already submitted an entry today' });
       }
 
       // Get today's target number
       const dailyNumber = await app.db.query.dailyNumbers.findFirst({
-        where: eq(schema.dailyNumbers.date, today),
+        where: eq(schema.dailyNumbers.date, todayPST),
       });
 
       if (!dailyNumber) {
-        app.logger.error({ userId, date: today }, 'Daily number not found for today');
+        app.logger.error({ userId, date: todayPST }, 'Daily number not found for today');
         return reply.status(400).send({ error: 'Daily number not available' });
       }
+
+      // Calculate reveal time (midnight PST of the day after submission)
+      const revealTimePST = getMidnightTomorrowPST();
 
       // Create submission
       const submitted = await app.db
@@ -418,7 +421,8 @@ export function registerNumSnapRoutes(app: App) {
           confirmedNumber,
           latitude: latitude.toString(),
           longitude: longitude.toString(),
-          submissionDate: today,
+          submissionDate: todayPST,
+          revealTimePST,
           isWinner: confirmedNumber === dailyNumber.targetNumber,
         })
         .returning();
@@ -430,13 +434,17 @@ export function registerNumSnapRoutes(app: App) {
         where: eq(schema.userStats.userId, userId),
       });
 
-      const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const yesterdayPST = (() => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      })();
       let newCurrentStreak = 1;
       let newLongestStreak = 1;
 
       if (existingStats) {
         // Check if user submitted yesterday
-        if (existingStats.lastSubmissionDate === yesterday) {
+        if (existingStats.lastSubmissionDate === yesterdayPST) {
           newCurrentStreak = existingStats.currentStreak + 1;
         } else {
           newCurrentStreak = 1;
@@ -450,7 +458,7 @@ export function registerNumSnapRoutes(app: App) {
             longestStreak: newLongestStreak,
             totalSubmissions: existingStats.totalSubmissions + 1,
             totalWins: submission.isWinner ? existingStats.totalWins + 1 : existingStats.totalWins,
-            lastSubmissionDate: today,
+            lastSubmissionDate: todayPST,
           })
           .where(eq(schema.userStats.userId, userId));
       } else {
@@ -461,7 +469,7 @@ export function registerNumSnapRoutes(app: App) {
           longestStreak: 1,
           totalSubmissions: 1,
           totalWins: submission.isWinner ? 1 : 0,
-          lastSubmissionDate: today,
+          lastSubmissionDate: todayPST,
         });
       }
 
@@ -489,7 +497,7 @@ export function registerNumSnapRoutes(app: App) {
         },
       };
     } catch (error) {
-      app.logger.error({ err: error, userId, date: today }, 'Failed to submit entry');
+      app.logger.error({ err: error, userId, date: todayPST }, 'Failed to submit entry');
       throw error;
     }
   });
@@ -527,22 +535,22 @@ export function registerNumSnapRoutes(app: App) {
   }, async (request: FastifyRequest, reply: FastifyReply): Promise<{ winners: Array<{ userId: string; userName: string; photoUrl: string; confirmedNumber: number }>; totalWinners: number }> => {
     app.logger.info({}, 'Checking winners');
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const todayPST = getTodayPST();
 
       // Get today's target number
       const dailyNumber = await app.db.query.dailyNumbers.findFirst({
-        where: eq(schema.dailyNumbers.date, today),
+        where: eq(schema.dailyNumbers.date, todayPST),
       });
 
       if (!dailyNumber) {
-        app.logger.warn({ date: today }, 'Daily number not found');
+        app.logger.warn({ date: todayPST }, 'Daily number not found');
         return { winners: [], totalWinners: 0 };
       }
 
       // Find all non-winner submissions for today that match the target
       const matchingSubmissions = await app.db.query.submissions.findMany({
         where: and(
-          eq(schema.submissions.submissionDate, today),
+          eq(schema.submissions.submissionDate, todayPST),
           eq(schema.submissions.confirmedNumber, dailyNumber.targetNumber),
           eq(schema.submissions.isWinner, false),
         ),
@@ -577,7 +585,7 @@ export function registerNumSnapRoutes(app: App) {
         });
       }
 
-      app.logger.info({ totalWinners: winners.length, date: today }, 'Winners checked and marked');
+      app.logger.info({ totalWinners: winners.length, date: todayPST }, 'Winners checked and marked');
 
       return {
         winners,
@@ -733,18 +741,25 @@ export function registerNumSnapRoutes(app: App) {
       tags: ['submissions'],
       response: {
         200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              date: { type: 'string' },
-              photoUrl: { type: 'string' },
-              confirmedNumber: { type: 'number' },
-              targetNumber: { type: 'number' },
-              isWinner: { type: 'boolean' },
-              latitude: { type: 'string' },
-              longitude: { type: 'string' },
+          type: 'object',
+          properties: {
+            currentTimePST: { type: 'string', format: 'date-time' },
+            submissions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  date: { type: 'string' },
+                  photoUrl: { type: 'string' },
+                  confirmedNumber: { type: 'number' },
+                  targetNumber: { type: 'number' },
+                  isWinner: { type: 'boolean' },
+                  revealTimePST: { type: ['string', 'null'], format: 'date-time' },
+                  latitude: { type: 'string' },
+                  longitude: { type: 'string' },
+                },
+              },
             },
           },
         },
@@ -754,11 +769,12 @@ export function registerNumSnapRoutes(app: App) {
         },
       },
     },
-  }, async (request: FastifyRequest, reply: FastifyReply): Promise<Array<{ id: string; date: string; photoUrl: string; confirmedNumber: number; targetNumber: number; isWinner: boolean; latitude: string | null; longitude: string | null }> | void> => {
+  }, async (request: FastifyRequest, reply: FastifyReply): Promise<{ currentTimePST: string; submissions: Array<{ id: string; date: string; photoUrl: string; confirmedNumber: number; targetNumber: number; isWinner: boolean; revealTimePST: string | null; latitude: string | null; longitude: string | null }> } | void> => {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
     const userId = session.user.id;
+    const currentTimePST = formatAsPST(new Date());
     app.logger.info({ userId }, 'Fetching user submissions');
 
     try {
@@ -783,12 +799,13 @@ export function registerNumSnapRoutes(app: App) {
         confirmedNumber: sub.confirmedNumber,
         targetNumber: numbersByDate.get(sub.submissionDate) ?? 0,
         isWinner: sub.isWinner,
+        revealTimePST: sub.revealTimePST ? formatAsPST(sub.revealTimePST) : null,
         latitude: sub.latitude ? String(sub.latitude) : null,
         longitude: sub.longitude ? String(sub.longitude) : null,
       }));
 
       app.logger.info({ userId, count: formatted.length }, 'User submissions fetched');
-      return formatted;
+      return { currentTimePST, submissions: formatted };
     } catch (error) {
       app.logger.error({ err: error, userId }, 'Failed to fetch user submissions');
       throw error;
