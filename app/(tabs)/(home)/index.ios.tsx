@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   hintText: {
     fontSize: 13,
-    color: colors.primary,
+    color: '#FFFFFF',
     marginTop: 10,
     fontWeight: '600',
   },

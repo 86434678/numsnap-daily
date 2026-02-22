@@ -31,11 +31,9 @@ export default function CameraScreen() {
   const requestPermissions = useCallback(async () => {
     console.log('CameraScreen: Requesting camera and location permissions');
     
-    // Request camera permission
     const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
     setHasPermission(cameraStatus.granted);
     
-    // Request location permission
     const locationStatus = await Location.requestForegroundPermissionsAsync();
     setLocationPermission(locationStatus.granted);
     
@@ -70,14 +68,12 @@ export default function CameraScreen() {
     setLoading(true);
     
     try {
-      // Get current location
       console.log('CameraScreen: Getting current location');
       const location = await Location.getCurrentPositionAsync({});
       const latitude = location.coords.latitude;
       const longitude = location.coords.longitude;
       console.log('CameraScreen: Location obtained:', latitude, longitude);
 
-      // Launch camera
       console.log('CameraScreen: Launching camera');
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: 'images',
@@ -89,7 +85,6 @@ export default function CameraScreen() {
         console.log('CameraScreen: Photo captured, navigating to confirmation');
         const photoUri = result.assets[0].uri;
         
-        // Navigate to confirmation screen with photo and location
         router.push({
           pathname: '/confirm-submission',
           params: {
@@ -109,56 +104,6 @@ export default function CameraScreen() {
     }
   };
 
-  const pickFromGallery = async () => {
-    console.log('CameraScreen: User tapped Choose from Gallery button');
-    
-    if (!locationPermission) {
-      showAlert('Permission Required', 'Please grant location permission to continue.');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      // Get current location
-      console.log('CameraScreen: Getting current location');
-      const location = await Location.getCurrentPositionAsync({});
-      const latitude = location.coords.latitude;
-      const longitude = location.coords.longitude;
-      console.log('CameraScreen: Location obtained:', latitude, longitude);
-
-      // Launch gallery
-      console.log('CameraScreen: Launching gallery');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        console.log('CameraScreen: Photo selected, navigating to confirmation');
-        const photoUri = result.assets[0].uri;
-        
-        // Navigate to confirmation screen with photo and location
-        router.push({
-          pathname: '/confirm-submission',
-          params: {
-            photoUri,
-            latitude: latitude.toString(),
-            longitude: longitude.toString(),
-          },
-        });
-      } else {
-        console.log('CameraScreen: Gallery selection cancelled');
-      }
-    } catch (error) {
-      console.error('CameraScreen: Error picking from gallery:', error);
-      showAlert('Error', 'Failed to select photo. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (hasPermission === null || locationPermission === null) {
     return (
       <View style={styles.container}>
@@ -170,7 +115,6 @@ export default function CameraScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
-      {/* Alert Modal */}
       <Modal
         visible={alertModal.visible}
         transparent
@@ -231,22 +175,6 @@ export default function CameraScreen() {
                 <Text style={styles.buttonText}>Take Photo</Text>
               </>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.button, styles.secondaryButton]} 
-            onPress={pickFromGallery}
-            disabled={loading || !locationPermission}
-          >
-            <IconSymbol 
-              ios_icon_name="photo.fill" 
-              android_material_icon_name="photo-library" 
-              size={24} 
-              color={colors.primary} 
-            />
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-              Choose from Gallery
-            </Text>
           </TouchableOpacity>
         </View>
 
@@ -327,18 +255,10 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.primary,
   },
-  secondaryButton: {
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
   buttonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  secondaryButtonText: {
-    color: colors.primary,
   },
   loadingText: {
     marginTop: 10,
