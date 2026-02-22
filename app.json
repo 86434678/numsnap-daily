@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "NumSnap Daily",
+    "slug": "numsnap-daily",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-jte.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/app-icon-jte.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.numsnapdaily",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
+        "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
+        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries and prevent fraud."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-jte.png",
+        "backgroundColor": "#000000"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.numsnapdaily",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/final_quest_240x240.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "NumSnap Daily needs access to your photos to select images for the daily sweepstakes.",
+          "cameraPermission": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries and prevent fraud."
+        }
+      ]
+    ],
+    "scheme": "numsnap",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev"
+    }
+  }
+}

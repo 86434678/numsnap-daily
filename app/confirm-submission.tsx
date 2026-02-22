@@ -1,0 +1,474 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, Platform, Modal } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { IconSymbol } from '@/components/IconSymbol';
+import { colors } from '@/styles/commonStyles';
+import { LinearGradient } from 'expo-linear-gradient';
+import { authenticatedPost, authenticatedUpload } from '@/utils/api';
+
+export default function ConfirmSubmissionScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  
+  const photoUri = params.photoUri as string;
+  const latitude = parseFloat(params.latitude as string);
+  const longitude = parseFloat(params.longitude as string);
+  
+  const [detectedNumber, setDetectedNumber] = useState<string>('');
+  const [confirmedNumber, setConfirmedNumber] = useState<string>('');
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submitError, setSubmitError] = useState<string>('');
+
+  console.log('ConfirmSubmissionScreen: Photo URI:', photoUri);
+  console.log('ConfirmSubmissionScreen: Location:', latitude, longitude);
+
+  const processOCR = useCallback(async () => {
+    console.log('[API] Starting OCR process for photo:', photoUri);
+    setLoading(true);
+    
+    try {
+      // Step 1: Upload the photo first to get a URL
+      console.log('[API] Uploading photo to /api/upload-photo...');
+      const formData = new FormData();
+
+      if (Platform.OS === 'web') {
+        // On web, fetch the blob from the URI and append it
+        const response = await fetch(photoUri);
+        const blob = await response.blob();
+        formData.append('photo', blob, 'photo.jpg');
+      } else {
+        // On native, append the file URI directly
+        formData.append('photo', {
+          uri: photoUri,
+          type: 'image/jpeg',
+          name: 'photo.jpg',
+        } as any);
+      }
+
+      const uploadResult = await authenticatedUpload<{ photoUrl: string }>(
+        '/api/upload-photo',
+        formData
+      );
+      console.log('[API] /api/upload-photo response:', uploadResult);
+      const uploadedPhotoUrl = uploadResult.photoUrl;
+
+      // Store the uploaded URL for later submission
+      setUploadedPhotoUrl(uploadedPhotoUrl);
+
+      // Step 2: Run OCR on the uploaded photo
+      console.log('[API] Requesting /api/process-ocr...');
+      const ocrResult = await authenticatedPost<{ detectedNumber: number | null }>(
+        '/api/process-ocr',
+        { photoUrl: uploadedPhotoUrl }
+      );
+      console.log('[API] /api/process-ocr response:', ocrResult);
+
+      if (ocrResult.detectedNumber !== null && ocrResult.detectedNumber !== undefined) {
+        const detectedStr = String(ocrResult.detectedNumber);
+        setDetectedNumber(detectedStr);
+        setConfirmedNumber(detectedStr);
+        console.log('ConfirmSubmissionScreen: OCR detected number:', detectedStr);
+      } else {
+        console.log('ConfirmSubmissionScreen: OCR could not detect a number');
+        setDetectedNumber('');
+        setConfirmedNumber('');
+      }
+    } catch (error) {
+      console.error('ConfirmSubmissionScreen: Error processing OCR:', error);
+      setDetectedNumber('');
+      setConfirmedNumber('');
+    } finally {
+      setLoading(false);
+    }
+  }, [photoUri]);
+
+  useEffect(() => {
+    processOCR();
+  }, [processOCR]);
+
+  const handleSubmit = async () => {
+    console.log('ConfirmSubmissionScreen: User tapped Confirm & Submit button');
+    
+    if (!confirmedNumber || confirmedNumber.length === 0) {
+      console.log('ConfirmSubmissionScreen: No number entered');
+      setSubmitError('Please enter a number before submitting.');
+      return;
+    }
+
+    if (!uploadedPhotoUrl) {
+      console.log('ConfirmSubmissionScreen: No uploaded photo URL available');
+      setSubmitError('Photo upload is still in progress. Please wait.');
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError('');
+    
+    try {
+      console.log('[API] Requesting /api/submit-entry...');
+      const result = await authenticatedPost<{
+        success: boolean;
+        submission: { id: string; confirmedNumber: number; isWinner: boolean };
+      }>('/api/submit-entry', {
+        photoUrl: uploadedPhotoUrl,
+        detectedNumber: detectedNumber ? parseInt(detectedNumber, 10) : parseInt(confirmedNumber, 10),
+        confirmedNumber: parseInt(confirmedNumber, 10),
+        latitude,
+        longitude,
+      });
+
+      console.log('[API] /api/submit-entry response:', result);
+
+      if (result.success) {
+        console.log('ConfirmSubmissionScreen: Entry submitted successfully');
+        setShowSuccessModal(true);
+        
+        // Navigate back to home after showing success
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          router.replace('/');
+        }, 2500);
+      } else {
+        setSubmitError('Submission failed. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('ConfirmSubmissionScreen: Error submitting entry:', error);
+      const message = error?.message || 'Failed to submit entry. Please try again.';
+      // Check for "already submitted today" error
+      if (message.includes('already submitted') || message.includes('one submission')) {
+        setSubmitError('You have already submitted an entry today. Come back tomorrow!');
+      } else {
+        setSubmitError(message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNumberChange = (text: string) => {
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    const truncated = numericOnly.slice(0, 6);
+    setConfirmedNumber(truncated);
+    console.log('ConfirmSubmissionScreen: Number changed to:', truncated);
+  };
+
+  const confirmedNumberDisplay = confirmedNumber.padStart(6, '0');
+
+  return (
+    <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* Photo Preview */}
+        <View style={styles.photoContainer}>
+          <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+        </View>
+
+        {/* OCR Detection */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Detecting number...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.detectionCard}>
+              <Text style={styles.detectionLabel}>Detected Number:</Text>
+              <View style={styles.detectedNumberContainer}>
+                <Text style={styles.detectedNumber}>{detectedNumber || 'None'}</Text>
+              </View>
+            </View>
+
+            {/* Editable Number Input */}
+            <View style={styles.inputCard}>
+              <Text style={styles.inputLabel}>Confirm or Edit Number:</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmedNumber}
+                onChangeText={handleNumberChange}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="Enter 6-digit number"
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Text style={styles.inputHint}>
+                Is this the correct number from your photo?
+              </Text>
+            </View>
+
+            {/* Number Display */}
+            <View style={styles.displayCard}>
+              <Text style={styles.displayLabel}>Your Entry:</Text>
+              <View style={styles.displayNumberContainer}>
+                <Text style={styles.displayNumber}>{confirmedNumberDisplay}</Text>
+              </View>
+            </View>
+
+            {/* Error Message */}
+            {submitError ? (
+              <View style={styles.errorCard}>
+                <IconSymbol 
+                  ios_icon_name="exclamationmark.circle.fill" 
+                  android_material_icon_name="error" 
+                  size={20} 
+                  color={colors.error} 
+                />
+                <Text style={styles.errorText}>{submitError}</Text>
+              </View>
+            ) : null}
+
+            {/* Submit Button */}
+            <TouchableOpacity 
+              style={[styles.submitButton, (!confirmedNumber || submitting) && styles.submitButtonDisabled]} 
+              onPress={handleSubmit}
+              disabled={!confirmedNumber || submitting}
+            >
+              <LinearGradient
+                colors={confirmedNumber && !submitting ? [colors.success, '#00CC66'] : ['#CCCCCC', '#999999']}
+                style={styles.submitButtonGradient}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <IconSymbol 
+                      ios_icon_name="checkmark.circle.fill" 
+                      android_material_icon_name="check-circle" 
+                      size={24} 
+                      color="#FFFFFF" 
+                    />
+                    <Text style={styles.submitButtonText}>Confirm & Submit</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Location Info */}
+            <View style={styles.locationCard}>
+              <IconSymbol 
+                ios_icon_name="location.fill" 
+                android_material_icon_name="location-on" 
+                size={20} 
+                color={colors.textSecondary} 
+              />
+              <Text style={styles.locationText}>
+                Location: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+              </Text>
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name="check-circle" 
+              size={80} 
+              color={colors.success} 
+            />
+            <Text style={styles.modalTitle}>Entry Submitted!</Text>
+            <Text style={styles.modalSubtitle}>Good luck! Check back tomorrow for results.</Text>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  photoContainer: {
+    width: '100%',
+    height: 300,
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: colors.card,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  detectionCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  detectionLabel: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  detectedNumberContainer: {
+    backgroundColor: 'rgba(0, 255, 127, 0.1)',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  detectedNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.success,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  inputCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    color: colors.text,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  inputHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  displayCard: {
+    backgroundColor: colors.card,
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  displayLabel: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  displayNumberContainer: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+  },
+  displayNumber: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  submitButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 10,
+  },
+  submitButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 15,
+    backgroundColor: colors.card,
+    borderRadius: 10,
+  },
+  locationText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.error,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.success,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+});
