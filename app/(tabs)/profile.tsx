@@ -16,6 +16,7 @@ interface Submission {
   confirmedNumber: number;
   targetNumber: number;
   isWinner: boolean;
+  revealTimePST?: string;
 }
 
 export default function ProfileScreen() {
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
     totalWins: number;
   } | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [currentTimePST, setCurrentTimePST] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
@@ -40,6 +42,14 @@ export default function ProfileScreen() {
       fetchUserData();
     }
   }, [user]);
+
+  // Tick currentTimePST every minute so reveal logic stays accurate without re-fetching
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTimePST(new Date().toISOString());
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchUserData = async () => {
     console.log('[API] Requesting /api/my-stats and /api/my-submissions...');
@@ -55,15 +65,19 @@ export default function ProfileScreen() {
           recentSubmissions: { date: string; photoUrl: string; confirmedNumber: number; isWinner: boolean }[];
         }>('/api/my-stats'),
         authenticatedGet<{
-          id: string;
-          date: string;
-          photoUrl: string;
-          confirmedNumber: number;
-          targetNumber: number;
-          isWinner: boolean;
-          latitude: string;
-          longitude: string;
-        }[]>('/api/my-submissions'),
+          submissions: {
+            id: string;
+            date: string;
+            photoUrl: string;
+            confirmedNumber: number;
+            targetNumber: number;
+            isWinner: boolean;
+            latitude: string;
+            longitude: string;
+            revealTimePST?: string;
+          }[];
+          currentTimePST?: string;
+        }>('/api/my-submissions'),
       ]);
 
       console.log('[API] /api/my-stats response:', statsData);
@@ -75,7 +89,9 @@ export default function ProfileScreen() {
         totalSubmissions: statsData.totalSubmissions,
         totalWins: statsData.totalWins,
       });
-      setSubmissions(submissionsData || []);
+      
+      setSubmissions(submissionsData.submissions || []);
+      setCurrentTimePST(submissionsData.currentTimePST || new Date().toISOString());
     } catch (error) {
       console.error('ProfileScreen: Error fetching user data:', error);
       setStats({ currentStreak: 0, longestStreak: 0, totalSubmissions: 0, totalWins: 0 });
@@ -107,6 +123,19 @@ export default function ProfileScreen() {
     setShowSignOutModal(false);
   };
 
+  const isTargetRevealed = (submission: Submission): boolean => {
+    if (!submission.revealTimePST || !currentTimePST) {
+      return true;
+    }
+    
+    const revealTime = new Date(submission.revealTimePST).getTime();
+    const currentTime = new Date(currentTimePST).getTime();
+    const revealed = currentTime >= revealTime;
+    
+    console.log('ProfileScreen: Checking reveal for submission', submission.id, 'revealed:', revealed);
+    return revealed;
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
@@ -131,7 +160,6 @@ export default function ProfileScreen() {
           Platform.OS !== 'ios' && styles.contentWithTabBar
         ]}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <IconSymbol 
@@ -144,7 +172,6 @@ export default function ProfileScreen() {
           <Text style={[styles.email, { color: themeColors.text }]}>{user?.email}</Text>
         </View>
 
-        {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: colors.card }]}>
             <IconSymbol 
@@ -191,7 +218,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Submission History */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Submission History</Text>
           {submissions.length === 0 ? (
@@ -211,38 +237,44 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <React.Fragment>
-              {submissions.map((submission, index) => (
-                <View key={index} style={[styles.submissionCard, { backgroundColor: colors.card }]}>
-                  <Image source={{ uri: submission.photoUrl }} style={styles.submissionImage} />
-                  <View style={styles.submissionInfo}>
-                    <Text style={[styles.submissionDate, { color: themeColors.text }]}>
-                      {new Date(submission.date).toLocaleDateString()}
-                    </Text>
-                    <Text style={[styles.submissionNumber, { color: colors.textSecondary }]}>
-                      Your number: {submission.confirmedNumber}
-                    </Text>
-                    <Text style={[styles.submissionTarget, { color: colors.textSecondary }]}>
-                      Target: {submission.targetNumber}
-                    </Text>
-                    {submission.isWinner && (
-                      <View style={styles.winnerBadge}>
-                        <IconSymbol 
-                          ios_icon_name="trophy.fill" 
-                          android_material_icon_name="emoji-events" 
-                          size={16} 
-                          color={colors.success} 
-                        />
-                        <Text style={[styles.winnerText, { color: colors.success }]}>Winner!</Text>
-                      </View>
-                    )}
+              {submissions.map((submission, index) => {
+                const revealed = isTargetRevealed(submission);
+                const targetDisplay = revealed 
+                  ? String(submission.targetNumber).padStart(6, '0')
+                  : 'Hidden until reveal';
+                
+                return (
+                  <View key={index} style={[styles.submissionCard, { backgroundColor: colors.card }]}>
+                    <Image source={{ uri: submission.photoUrl }} style={styles.submissionImage} />
+                    <View style={styles.submissionInfo}>
+                      <Text style={[styles.submissionDate, { color: themeColors.text }]}>
+                        {new Date(submission.date).toLocaleDateString()}
+                      </Text>
+                      <Text style={[styles.submissionNumber, { color: colors.textSecondary }]}>
+                        Your number: {String(submission.confirmedNumber).padStart(6, '0')}
+                      </Text>
+                      <Text style={[styles.submissionTarget, { color: colors.textSecondary }]}>
+                        Target: {targetDisplay}
+                      </Text>
+                      {submission.isWinner && (
+                        <View style={styles.winnerBadge}>
+                          <IconSymbol 
+                            ios_icon_name="trophy.fill" 
+                            android_material_icon_name="emoji-events" 
+                            size={16} 
+                            color={colors.success} 
+                          />
+                          <Text style={[styles.winnerText, { color: colors.success }]}>Winner!</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </React.Fragment>
           )}
         </View>
 
-        {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <IconSymbol 
             ios_icon_name="arrow.right.square.fill" 
@@ -254,7 +286,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Sign Out Confirmation Modal */}
       <Modal
         visible={showSignOutModal}
         transparent

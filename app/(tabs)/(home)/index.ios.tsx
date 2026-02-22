@@ -25,19 +25,26 @@ export default function HomeScreen() {
     console.log('[API] Requesting /api/daily-number...');
     setLoading(true);
     try {
-      const data = await authenticatedGet<{ hasSubmitted: boolean; date: string; timeUntilReset: number }>(
-        '/api/daily-number'
-      );
+      const data = await authenticatedGet<{ 
+        hasSubmitted: boolean; 
+        date: string; 
+        timeUntilReset: number;
+        revealTimePST?: string;
+        currentTimePST?: string;
+      }>('/api/daily-number');
       console.log('[API] /api/daily-number response:', data);
       setTimeUntilReset(data.timeUntilReset);
       setHasSubmittedToday(data.hasSubmitted);
     } catch (error) {
       console.error('HomeScreen: Error fetching daily number:', error);
+      // Fallback: calculate seconds until midnight PST (UTC-8)
       const now = new Date();
-      const midnight = new Date(now);
-      midnight.setUTCHours(24, 0, 0, 0);
-      const secondsUntilMidnight = Math.floor((midnight.getTime() - now.getTime()) / 1000);
-      setTimeUntilReset(secondsUntilMidnight);
+      const PST_OFFSET_MS = 8 * 60 * 60 * 1000; // UTC-8
+      const nowPST = new Date(now.getTime() - PST_OFFSET_MS);
+      const midnightPST = new Date(nowPST);
+      midnightPST.setUTCHours(24, 0, 0, 0);
+      const secondsUntilMidnightPST = Math.floor((midnightPST.getTime() - nowPST.getTime()) / 1000);
+      setTimeUntilReset(Math.max(0, secondsUntilMidnightPST));
     } finally {
       setLoading(false);
     }
@@ -182,6 +189,7 @@ export default function HomeScreen() {
               <Text style={styles.timerText}>{timeDisplay}</Text>
             </View>
             <Text style={styles.timerLabel}>until next number</Text>
+            <Text style={styles.timezoneNote}>All times in PST</Text>
             <Text style={styles.hintText}>Submit your snap to reveal!</Text>
           </View>
 
@@ -392,6 +400,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 5,
+  },
+  timezoneNote: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 3,
+    fontStyle: 'italic',
   },
   statsRow: {
     flexDirection: 'row',

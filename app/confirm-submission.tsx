@@ -21,6 +21,7 @@ export default function ConfirmSubmissionScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   console.log('ConfirmSubmissionScreen: Photo URI:', photoUri);
   console.log('ConfirmSubmissionScreen: Location:', latitude, longitude);
@@ -90,12 +91,14 @@ export default function ConfirmSubmissionScreen() {
     if (!confirmedNumber || confirmedNumber.length === 0) {
       console.log('ConfirmSubmissionScreen: No number entered');
       setSubmitError('Please enter a number before submitting.');
+      setShowErrorModal(true);
       return;
     }
 
     if (!uploadedPhotoUrl) {
       console.log('ConfirmSubmissionScreen: No uploaded photo URL available');
       setSubmitError('Photo upload is still in progress. Please wait.');
+      setShowErrorModal(true);
       return;
     }
 
@@ -120,7 +123,6 @@ export default function ConfirmSubmissionScreen() {
 
       if (result.success) {
         console.log('ConfirmSubmissionScreen: Entry submitted successfully, navigating to reveal screen');
-        // Pass revealData as params so reveal screen can show results immediately without extra API call
         if (result.revealData) {
           router.replace({
             pathname: '/reveal-result',
@@ -137,15 +139,43 @@ export default function ConfirmSubmissionScreen() {
         }
       } else {
         setSubmitError('Submission failed. Please try again.');
+        setShowErrorModal(true);
       }
     } catch (error: any) {
       console.error('ConfirmSubmissionScreen: Error submitting entry:', error);
-      const message = error?.message || 'Failed to submit entry. Please try again.';
-      if (message.includes('already submitted') || message.includes('one submission')) {
+      const rawMessage = error?.message || 'Failed to submit entry. Please try again.';
+      
+      // Parse the error message from the API response body if present
+      // API errors come as: "API error: 400 - {"error":"..."}"
+      let parsedMessage = rawMessage;
+      try {
+        const jsonMatch = rawMessage.match(/\{.*\}/s);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.error) {
+            parsedMessage = parsed.error;
+          }
+        }
+      } catch {
+        // Use raw message if JSON parsing fails
+      }
+
+      if (
+        parsedMessage.includes('continental United States') ||
+        parsedMessage.includes('outside the eligible area') ||
+        parsedMessage.includes('eligible area')
+      ) {
+        setSubmitError('Submissions are only accepted from the continental United States. Your location is outside the eligible area.');
+      } else if (
+        parsedMessage.includes('already submitted') ||
+        parsedMessage.includes('one submission') ||
+        parsedMessage.includes('already have a submission')
+      ) {
         setSubmitError('You have already submitted an entry today. Come back tomorrow!');
       } else {
-        setSubmitError(message);
+        setSubmitError(parsedMessage);
       }
+      setShowErrorModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -158,10 +188,37 @@ export default function ConfirmSubmissionScreen() {
     console.log('ConfirmSubmissionScreen: Number changed to:', truncated);
   };
 
+  const hideErrorModal = () => {
+    setShowErrorModal(false);
+  };
+
   const confirmedNumberDisplay = confirmedNumber.padStart(6, '0');
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
+      <Modal
+        visible={showErrorModal}
+        transparent
+        animationType="fade"
+        onRequestClose={hideErrorModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <IconSymbol 
+              ios_icon_name="exclamationmark.circle.fill" 
+              android_material_icon_name="error" 
+              size={48} 
+              color={colors.error} 
+            />
+            <Text style={styles.modalTitle}>Submission Error</Text>
+            <Text style={styles.modalMessage}>{submitError}</Text>
+            <TouchableOpacity style={styles.modalButton} onPress={hideErrorModal}>
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.photoContainer}>
           <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
@@ -203,18 +260,6 @@ export default function ConfirmSubmissionScreen() {
                 <Text style={styles.displayNumber}>{confirmedNumberDisplay}</Text>
               </View>
             </View>
-
-            {submitError ? (
-              <View style={styles.errorCard}>
-                <IconSymbol 
-                  ios_icon_name="exclamationmark.circle.fill" 
-                  android_material_icon_name="error" 
-                  size={20} 
-                  color={colors.error} 
-                />
-                <Text style={styles.errorText}>{submitError}</Text>
-              </View>
-            ) : null}
 
             <TouchableOpacity 
               style={[styles.submitButton, (!confirmedNumber || submitting) && styles.submitButtonDisabled]} 
@@ -404,21 +449,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: colors.error,
-  },
-  errorText: {
+  modalOverlay: {
     flex: 1,
-    fontSize: 14,
-    color: colors.error,
-    fontWeight: '500',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

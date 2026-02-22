@@ -7,6 +7,27 @@ import * as Location from 'expo-location';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 
+// Continental US geographic bounds
+const CONTINENTAL_US_BOUNDS = {
+  minLat: 24.0,
+  maxLat: 49.5,
+  minLon: -125.0,
+  maxLon: -66.5,
+};
+
+/**
+ * Check if a lat/lon coordinate is within the continental United States.
+ * Excludes Alaska, Hawaii, territories, and international locations.
+ */
+function isInContinentalUS(latitude: number, longitude: number): boolean {
+  return (
+    latitude >= CONTINENTAL_US_BOUNDS.minLat &&
+    latitude <= CONTINENTAL_US_BOUNDS.maxLat &&
+    longitude >= CONTINENTAL_US_BOUNDS.minLon &&
+    longitude <= CONTINENTAL_US_BOUNDS.maxLon
+  );
+}
+
 export default function CameraScreen() {
   const router = useRouter();
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
@@ -82,10 +103,23 @@ export default function CameraScreen() {
       const latitude = location.coords.latitude;
       const longitude = location.coords.longitude;
       console.log('CameraScreen: Location obtained:', latitude, longitude);
+
+      // Step 3: Geographic restriction check — continental US only
+      console.log('CameraScreen: Checking geographic restriction for continental US');
+      if (!isInContinentalUS(latitude, longitude)) {
+        console.log('CameraScreen: Location outside continental US, blocking submission');
+        setIsRequestingLocation(false);
+        showAlert(
+          'Location Not Eligible',
+          'Submissions are only accepted from the continental United States. Your location is outside the eligible area.\n\nEntries from Alaska, Hawaii, U.S. territories, or outside the U.S. are not eligible.'
+        );
+        return;
+      }
+      console.log('CameraScreen: Location is within continental US, proceeding');
       
       setIsRequestingLocation(false);
       
-      // Step 3: Now request camera permission and open camera
+      // Step 4: Now request camera permission and open camera
       console.log('CameraScreen: Requesting camera permission');
       const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
       console.log('CameraScreen: Camera permission result:', cameraPermission.status);
@@ -100,7 +134,7 @@ export default function CameraScreen() {
         return;
       }
       
-      // Step 4: Open camera
+      // Step 5: Open camera
       setIsCapturingPhoto(true);
       console.log('CameraScreen: Launching camera');
       
@@ -252,7 +286,7 @@ export default function CameraScreen() {
             color={colors.textSecondary} 
           />
           <Text style={styles.infoText}>
-            Location is required to verify your entry
+            Location required · Continental US only · All times in PST
           </Text>
         </View>
       </View>
