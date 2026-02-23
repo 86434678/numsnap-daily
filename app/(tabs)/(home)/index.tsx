@@ -8,6 +8,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet, authenticatedGet } from "@/utils/api";
+import { useFocusEffect } from "@react-navigation/native";
 
 // Ad integration toggle (set to true when ads are integrated)
 const AD_INTEGRATION_ENABLED = false;
@@ -25,6 +26,8 @@ export default function HomeScreen() {
   const [hintText, setHintText] = useState<string>('');
   const [hintsUsed, setHintsUsed] = useState<number>(0);
   const [showHintModal, setShowHintModal] = useState(false);
+  const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
+  const [checkingAge, setCheckingAge] = useState(true);
 
   console.log('HomeScreen: User authenticated:', !!user);
 
@@ -94,6 +97,26 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const checkAgeVerification = useCallback(async () => {
+    console.log('[API] Checking age verification status...');
+    setCheckingAge(true);
+    try {
+      const data = await authenticatedGet<{ ageVerified: boolean }>('/api/user/age-status');
+      console.log('[API] Age verification status:', data);
+      setAgeVerified(data.ageVerified);
+      
+      if (!data.ageVerified) {
+        console.log('HomeScreen: User not age verified - redirecting to age verification');
+        router.push('/age-verification');
+      }
+    } catch (error) {
+      console.error('HomeScreen: Error checking age verification:', error);
+      setAgeVerified(false);
+    } finally {
+      setCheckingAge(false);
+    }
+  }, [router]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       console.log('HomeScreen: Redirecting to auth screen');
@@ -102,11 +125,22 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (user) {
-      console.log('HomeScreen: Fetching daily number and user stats');
+      console.log('HomeScreen: Checking age verification and fetching data');
+      checkAgeVerification();
       fetchDailyNumber();
       fetchUserStats();
     }
-  }, [user, fetchDailyNumber, fetchUserStats]);
+  }, [user, checkAgeVerification, fetchDailyNumber, fetchUserStats]);
+
+  // Re-check age verification when screen comes back into focus (e.g. after age-verification screen)
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        console.log('HomeScreen: Screen focused - re-checking age verification');
+        checkAgeVerification();
+      }
+    }, [user, checkAgeVerification])
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -179,6 +213,14 @@ export default function HomeScreen() {
 
   const handleSnapPhoto = () => {
     console.log('HomeScreen: User tapped Snap a Number button');
+    
+    // Check age verification before allowing snap
+    if (ageVerified === false) {
+      console.log('HomeScreen: User not age verified - redirecting to age verification');
+      router.push('/age-verification');
+      return;
+    }
+    
     router.push('/camera');
   };
 

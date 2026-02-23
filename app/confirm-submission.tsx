@@ -132,6 +132,7 @@ export default function ConfirmSubmissionScreen() {
               targetNumber: result.revealData.targetNumber,
               submissionTime: result.revealData.submissionTime,
               userName: result.revealData.userName,
+              submissionId: result.submission?.id || '',
             },
           });
         } else {

@@ -131,6 +131,12 @@ export default function RootLayout() {
                 {/* Reveal result screen */}
                 <Stack.Screen name="reveal-result" options={{ headerShown: false, presentation: "modal" }} />
                 
+                {/* Age verification screen */}
+                <Stack.Screen name="age-verification" options={{ headerShown: false, presentation: "modal" }} />
+                
+                {/* Prize claim screen */}
+                <Stack.Screen name="claim-prize" options={{ headerShown: true, title: "Claim Your Prize", presentation: "modal" }} />
+                
                 {/* 404 */}
                 <Stack.Screen name="+not-found" options={{ title: "Oops!" }} />
               </Stack>

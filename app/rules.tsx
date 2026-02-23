@@ -139,7 +139,13 @@ export default function RulesScreen() {
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Eligibility</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Must be 18 years or older to participate
+              • Must be 18 years of age or older at time of entry
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Age is self-declared and verified via in-app age gate
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • False declaration may result in disqualification
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               • Must be physically located in the continental United States at the time of submission
@@ -158,13 +164,35 @@ export default function RulesScreen() {
               • Daily prize: $25 USD
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Winners will be notified via email within 24 hours
+              • Winners will be notified in-app and via email within 24 hours
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Prizes are paid via electronic transfer or check
+              • Winners must claim their prize within 30 days or it will be forfeited
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               • Winners are responsible for any applicable taxes
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>How Winners Are Paid</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              Prizes are paid via privacy-friendly payment methods. No bank account details are required.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              Payment options:
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • PayPal: Provide your PayPal email, username, or PayPal.Me link
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • Venmo: Provide your Venmo username or handle
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • Digital e-Gift Card: We&apos;ll email you a $25 Visa or Amazon e-gift code
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              Winners provide their payment information on the claim form. Prizes are processed manually within 7 business days.
             </Text>
           </View>
 

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -82,6 +82,7 @@ interface RevealData {
   targetNumber: string;
   submissionTime: string;
   userName: string;
+  submissionId?: string;
 }
 
 export default function RevealResultScreen() {
@@ -103,6 +104,7 @@ export default function RevealResultScreen() {
         targetNumber: params.targetNumber as string,
         submissionTime: params.submissionTime as string,
         userName: params.userName as string,
+        submissionId: params.submissionId as string || '',
       });
       setLoading(false);
     } else {
@@ -163,6 +165,18 @@ export default function RevealResultScreen() {
     day: 'numeric',
     year: 'numeric'
   });
+
+  const handleClaimPrize = () => {
+    console.log('RevealResultScreen: User tapped Claim Prize button');
+    router.push({
+      pathname: '/claim-prize',
+      params: {
+        submissionId: revealData.submissionId || params.submissionId || '',
+        winningNumber: revealData.targetNumber,
+        prizeAmount: '25',
+      },
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -237,11 +251,34 @@ export default function RevealResultScreen() {
 
           {/* Prize Info */}
           {revealData.isMatch && (
-            <View style={styles.prizeCard}>
-              <Text style={styles.prizeAmount}>$25</Text>
-              <Text style={styles.prizeLabel}>Prize Won!</Text>
-              <Text style={styles.prizeSubtext}>You&apos;ll be contacted via email within 24 hours</Text>
-            </View>
+            <>
+              <View style={styles.prizeCard}>
+                <Text style={styles.prizeAmount}>$25</Text>
+                <Text style={styles.prizeLabel}>Prize Won!</Text>
+                <Text style={styles.prizeSubtext}>Tap below to claim your prize</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.claimButton}
+                onPress={handleClaimPrize}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#FFD700', '#FFA500']}
+                  style={styles.claimButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <IconSymbol 
+                    ios_icon_name="gift.fill" 
+                    android_material_icon_name="card-giftcard" 
+                    size={24} 
+                    color="#FFFFFF" 
+                  />
+                  <Text style={styles.claimButtonText}>Claim Your Prize</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
           )}
 
           {/* Watermark */}
@@ -449,5 +486,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     textDecorationLine: 'underline',
+  },
+  claimButton: {
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  claimButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 10,
+  },
+  claimButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });

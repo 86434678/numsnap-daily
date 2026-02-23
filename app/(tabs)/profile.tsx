@@ -1,9 +1,9 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
-import { useTheme } from "@react-navigation/native";
+import { useTheme, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import { useRouter } from "expo-router";
@@ -17,6 +17,28 @@ interface Submission {
   targetNumber: number;
   isWinner: boolean;
   revealTimePST?: string;
+}
+
+interface EligiblePrize {
+  submissionId: string;
+  winningNumber: number;
+  date: string;
+  prizeAmount: number;
+  canClaim: boolean;
+  claimDeadline: string;
+}
+
+interface PrizeClaim {
+  claimId: string;
+  submissionId: string;
+  winningNumber: number;
+  date: string;
+  paymentMethod: string;
+  paymentInfo: string;
+  claimStatus: string;
+  claimedAt: string;
+  expiresAt: string;
+  processedAt: string | null;
 }
 
 export default function ProfileScreen() {
@@ -34,14 +56,28 @@ export default function ProfileScreen() {
   const [currentTimePST, setCurrentTimePST] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [eligiblePrizes, setEligiblePrizes] = useState<EligiblePrize[]>([]);
+  const [prizeClaims, setPrizeClaims] = useState<PrizeClaim[]>([]);
+  const [loadingPrizes, setLoadingPrizes] = useState(false);
 
   console.log('ProfileScreen: User:', user?.email);
 
   useEffect(() => {
     if (user) {
       fetchUserData();
+      fetchPrizeData();
     }
   }, [user]);
+
+  // Refresh prize data when screen comes back into focus (e.g. after claiming a prize)
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        console.log('ProfileScreen: Screen focused - refreshing prize data');
+        fetchPrizeData();
+      }
+    }, [user])
+  );
 
   // Tick currentTimePST every 10 seconds so reveal logic stays accurate without re-fetching
   useEffect(() => {
@@ -109,6 +145,63 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPrizeData = async () => {
+    console.log('[API] Requesting /api/prize-claims/eligible and /api/prize-claims/my-claims...');
+    setLoadingPrizes(true);
+    try {
+      const [eligibleData, claimsData] = await Promise.all([
+        authenticatedGet<EligiblePrize[]>('/api/prize-claims/eligible'),
+        authenticatedGet<PrizeClaim[]>('/api/prize-claims/my-claims'),
+      ]);
+      console.log('[API] /api/prize-claims/eligible response:', eligibleData);
+      console.log('[API] /api/prize-claims/my-claims response:', claimsData);
+      setEligiblePrizes(eligibleData || []);
+      setPrizeClaims(claimsData || []);
+    } catch (error) {
+      console.error('ProfileScreen: Error fetching prize data:', error);
+      setEligiblePrizes([]);
+      setPrizeClaims([]);
+    } finally {
+      setLoadingPrizes(false);
+    }
+  };
+
+  const getClaimStatusLabel = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pending Review';
+      case 'processing': return 'Processing';
+      case 'completed': return 'Paid ✓';
+      case 'expired': return 'Expired';
+      default: return status;
+    }
+  };
+
+  const getClaimStatusColor = (status: string): string => {
+    switch (status) {
+      case 'pending': return colors.warning;
+      case 'processing': return colors.primary;
+      case 'completed': return colors.success;
+      case 'expired': return colors.error;
+      default: return colors.textSecondary;
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string): string => {
+    switch (method) {
+      case 'paypal': return 'PayPal';
+      case 'venmo': return 'Venmo';
+      case 'egift': return 'e-Gift Card';
+      default: return method;
+    }
+  };
+
+  const getDaysUntilDeadline = (deadline: string): number => {
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const diffMs = deadlineDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   };
 
   const handleSignOut = async () => {
@@ -308,6 +401,101 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Eligible Prizes Section */}
+        {(eligiblePrizes.length > 0 || loadingPrizes) && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>🏆 Unclaimed Prizes</Text>
+            {loadingPrizes ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              eligiblePrizes.map((prize, index) => {
+                const daysLeft = getDaysUntilDeadline(prize.claimDeadline);
+                return (
+                  <View key={index} style={[styles.prizeEligibleCard, { backgroundColor: '#FFF9E6', borderColor: colors.primary }]}>
+                    <View style={styles.prizeEligibleHeader}>
+                      <IconSymbol
+                        ios_icon_name="trophy.fill"
+                        android_material_icon_name="emoji-events"
+                        size={28}
+                        color={colors.primary}
+                      />
+                      <View style={styles.prizeEligibleInfo}>
+                        <Text style={[styles.prizeEligibleTitle, { color: colors.text }]}>
+                          You won $25!
+                        </Text>
+                        <Text style={[styles.prizeEligibleDate, { color: colors.textSecondary }]}>
+                          {new Date(prize.date).toLocaleDateString()} · Number: {String(prize.winningNumber).padStart(6, '0')}
+                        </Text>
+                        <Text style={[styles.prizeDeadline, { color: daysLeft <= 7 ? colors.error : colors.warning }]}>
+                          ⏰ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left to claim
+                        </Text>
+                      </View>
+                    </View>
+                    {prize.canClaim && (
+                      <TouchableOpacity
+                        style={styles.claimNowButton}
+                        onPress={() => {
+                          console.log('ProfileScreen: Navigating to claim prize for submission:', prize.submissionId);
+                          router.push({
+                            pathname: '/claim-prize',
+                            params: {
+                              submissionId: prize.submissionId,
+                              winningNumber: String(prize.winningNumber),
+                              prizeAmount: String(prize.prizeAmount),
+                            },
+                          });
+                        }}
+                      >
+                        <Text style={styles.claimNowButtonText}>Claim Prize →</Text>
+                      </TouchableOpacity>
+                    )}
+                    {!prize.canClaim && (
+                      <Text style={[styles.alreadyClaimedText, { color: colors.textSecondary }]}>
+                        Already claimed
+                      </Text>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* Prize Claims History Section */}
+        {prizeClaims.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Prize Claims</Text>
+            {prizeClaims.map((claim, index) => (
+              <View key={index} style={[styles.prizeClaimCard, { backgroundColor: colors.card }]}>
+                <View style={styles.prizeClaimHeader}>
+                  <View style={styles.prizeClaimLeft}>
+                    <Text style={[styles.prizeClaimAmount, { color: themeColors.text }]}>$25 Prize</Text>
+                    <Text style={[styles.prizeClaimDate, { color: colors.textSecondary }]}>
+                      Won: {new Date(claim.date).toLocaleDateString()}
+                    </Text>
+                    <Text style={[styles.prizeClaimMethod, { color: colors.textSecondary }]}>
+                      Via: {getPaymentMethodLabel(claim.paymentMethod)}
+                    </Text>
+                    <Text style={[styles.prizeClaimSubmitted, { color: colors.textSecondary }]}>
+                      Claimed: {new Date(claim.claimedAt).toLocaleDateString()}
+                    </Text>
+                    {claim.processedAt && (
+                      <Text style={[styles.prizeClaimProcessed, { color: colors.success }]}>
+                        Processed: {new Date(claim.processedAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={[styles.claimStatusBadge, { backgroundColor: getClaimStatusColor(claim.claimStatus) + '20', borderColor: getClaimStatusColor(claim.claimStatus) }]}>
+                    <Text style={[styles.claimStatusText, { color: getClaimStatusColor(claim.claimStatus) }]}>
+                      {getClaimStatusLabel(claim.claimStatus)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <IconSymbol 
             ios_icon_name="arrow.right.square.fill" 
@@ -488,6 +676,108 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  prizeEligibleCard: {
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 15,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  prizeEligibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  prizeEligibleInfo: {
+    flex: 1,
+  },
+  prizeEligibleTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  prizeEligibleDate: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  prizeDeadline: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  claimNowButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  claimNowButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  alreadyClaimedText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  prizeClaimCard: {
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  prizeClaimHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  prizeClaimLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  prizeClaimAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  prizeClaimDate: {
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  prizeClaimMethod: {
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  prizeClaimSubmitted: {
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  prizeClaimProcessed: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  claimStatusBadge: {
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  claimStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
