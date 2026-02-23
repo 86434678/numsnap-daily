@@ -43,11 +43,17 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  // Tick currentTimePST every minute so reveal logic stays accurate without re-fetching
+  // Tick currentTimePST every 10 seconds so reveal logic stays accurate without re-fetching
   useEffect(() => {
+    // Initialize immediately
+    setCurrentTimePST(new Date().toISOString());
+    
     const interval = setInterval(() => {
-      setCurrentTimePST(new Date().toISOString());
-    }, 60 * 1000);
+      const newTime = new Date().toISOString();
+      setCurrentTimePST(newTime);
+      console.log('ProfileScreen: Updated currentTimePST:', newTime);
+    }, 10 * 1000); // Update every 10 seconds
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -91,7 +97,11 @@ export default function ProfileScreen() {
       });
       
       setSubmissions(submissionsData.submissions || []);
-      setCurrentTimePST(submissionsData.currentTimePST || new Date().toISOString());
+      
+      // Set initial currentTimePST from backend or use local time
+      const initialTime = submissionsData.currentTimePST || new Date().toISOString();
+      setCurrentTimePST(initialTime);
+      console.log('ProfileScreen: Initial currentTimePST:', initialTime);
     } catch (error) {
       console.error('ProfileScreen: Error fetching user data:', error);
       setStats({ currentStreak: 0, longestStreak: 0, totalSubmissions: 0, totalWins: 0 });
@@ -124,15 +134,31 @@ export default function ProfileScreen() {
   };
 
   const isTargetRevealed = (submission: Submission): boolean => {
-    if (!submission.revealTimePST || !currentTimePST) {
-      return true;
+    // If no revealTimePST, default to hidden (target not yet revealed)
+    // The backend now always sets revealTimePST to 11:59:59 PM PST of the submission day
+    if (!submission.revealTimePST) {
+      console.log('ProfileScreen: No revealTimePST for submission', submission.id, '- defaulting to hidden');
+      return false;
+    }
+    
+    // If no currentTimePST yet, default to hidden
+    if (!currentTimePST) {
+      console.log('ProfileScreen: No currentTimePST yet - defaulting to hidden');
+      return false;
     }
     
     const revealTime = new Date(submission.revealTimePST).getTime();
     const currentTime = new Date(currentTimePST).getTime();
     const revealed = currentTime >= revealTime;
     
-    console.log('ProfileScreen: Checking reveal for submission', submission.id, 'revealed:', revealed);
+    console.log('ProfileScreen: Checking reveal for submission', submission.id, {
+      revealTimePST: submission.revealTimePST,
+      currentTimePST: currentTimePST,
+      revealTime: revealTime,
+      currentTime: currentTime,
+      revealed: revealed
+    });
+    
     return revealed;
   };
 
@@ -239,9 +265,11 @@ export default function ProfileScreen() {
             <React.Fragment>
               {submissions.map((submission, index) => {
                 const revealed = isTargetRevealed(submission);
+                const userNumberDisplay = String(submission.confirmedNumber).padStart(6, '0');
                 const targetDisplay = revealed 
                   ? String(submission.targetNumber).padStart(6, '0')
-                  : 'Hidden until reveal';
+                  : '••••••';
+                const targetLabelDisplay = revealed ? 'Target' : 'Target (Hidden)';
                 
                 return (
                   <View key={index} style={[styles.submissionCard, { backgroundColor: colors.card }]}>
@@ -251,11 +279,16 @@ export default function ProfileScreen() {
                         {new Date(submission.date).toLocaleDateString()}
                       </Text>
                       <Text style={[styles.submissionNumber, { color: colors.textSecondary }]}>
-                        Your number: {String(submission.confirmedNumber).padStart(6, '0')}
+                        Your number: {userNumberDisplay}
                       </Text>
                       <Text style={[styles.submissionTarget, { color: colors.textSecondary }]}>
-                        Target: {targetDisplay}
+                        {targetLabelDisplay}: {targetDisplay}
                       </Text>
+                      {!revealed && (
+                        <Text style={[styles.revealHint, { color: colors.warning }]}>
+                          Reveals at 11:59 PM PST
+                        </Text>
+                      )}
                       {submission.isWinner && (
                         <View style={styles.winnerBadge}>
                           <IconSymbol 
@@ -424,6 +457,12 @@ const styles = StyleSheet.create({
   },
   submissionTarget: {
     fontSize: 14,
+    marginBottom: 3,
+  },
+  revealHint: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   winnerBadge: {
     flexDirection: 'row',

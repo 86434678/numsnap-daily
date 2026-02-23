@@ -33,18 +33,26 @@ export default function HomeScreen() {
         currentTimePST?: string;
       }>('/api/daily-number');
       console.log('[API] /api/daily-number response:', data);
-      setTimeUntilReset(data.timeUntilReset);
+      // Cap at 86400 seconds (24 hours max) as a safety measure
+      setTimeUntilReset(Math.min(86400, Math.max(0, data.timeUntilReset)));
       setHasSubmittedToday(data.hasSubmitted);
     } catch (error) {
       console.error('HomeScreen: Error fetching daily number:', error);
-      // Fallback: calculate seconds until midnight PST (UTC-8)
+      // Fallback: calculate seconds until 11:59:59 PM PST (UTC-8)
       const now = new Date();
       const PST_OFFSET_MS = 8 * 60 * 60 * 1000; // UTC-8
       const nowPST = new Date(now.getTime() - PST_OFFSET_MS);
-      const midnightPST = new Date(nowPST);
-      midnightPST.setUTCHours(24, 0, 0, 0);
-      const secondsUntilMidnightPST = Math.floor((midnightPST.getTime() - nowPST.getTime()) / 1000);
-      setTimeUntilReset(Math.max(0, secondsUntilMidnightPST));
+      // Target: 23:59:59 PST today
+      const resetPST = new Date(nowPST);
+      resetPST.setUTCHours(23, 59, 59, 0);
+      let secondsUntilReset = Math.floor((resetPST.getTime() - nowPST.getTime()) / 1000);
+      // If already past 11:59:59 PM PST today, target tomorrow's 11:59:59 PM PST
+      if (secondsUntilReset <= 0) {
+        resetPST.setUTCDate(resetPST.getUTCDate() + 1);
+        secondsUntilReset = Math.floor((resetPST.getTime() - nowPST.getTime()) / 1000);
+      }
+      // Cap at 86400 seconds (24 hours max)
+      setTimeUntilReset(Math.min(86400, Math.max(0, secondsUntilReset)));
     } finally {
       setLoading(false);
     }
