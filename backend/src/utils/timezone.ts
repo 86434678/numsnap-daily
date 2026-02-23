@@ -60,13 +60,50 @@ export function getMidnightTomorrowPST(): Date {
 }
 
 /**
- * Calculate seconds until midnight PST from now.
+ * Get 11:59:59 PM PST (end of day) for today.
  */
-export function secondsUntilMidnightPST(): number {
+export function getEndOfDayPST(): Date {
+  const today = getTodayPST();
+  const [year, month, day] = today.split('-').map(Number);
+  // Create 23:59:59 UTC, then adjust for PST offset to get 23:59:59 PST in UTC
+  const endOfDayUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 0));
+  // To get 23:59:59 PST in actual UTC time, we add 8 hours
+  return new Date(endOfDayUTC.getTime() + 8 * 60 * 60 * 1000);
+}
+
+/**
+ * Get 11:59:59 PM PST (end of day) for tomorrow.
+ */
+export function getEndOfDayTomorrowPST(): Date {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const [year, month, day] = tomorrowStr.split('-').map(Number);
+  const endOfDayUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 0));
+  return new Date(endOfDayUTC.getTime() + 8 * 60 * 60 * 1000);
+}
+
+/**
+ * Calculate seconds until end of day (11:59:59 PM PST).
+ * Returns countdown to 11:59:59 PM PST today if before that time,
+ * or 11:59:59 PM PST tomorrow if after that time.
+ * Maximum is always 24 hours (86400 seconds).
+ */
+export function secondsUntilEndOfDayPST(): number {
   const now = new Date();
-  const nextMidnight = getMidnightTomorrowPST();
-  const secondsUntil = Math.max(0, Math.floor((nextMidnight.getTime() - now.getTime()) / 1000));
-  return secondsUntil;
+  const endOfToday = getEndOfDayPST();
+
+  // If we're before end of today, count to end of today
+  if (now.getTime() < endOfToday.getTime()) {
+    return Math.max(0, Math.floor((endOfToday.getTime() - now.getTime()) / 1000));
+  }
+
+  // Otherwise, count to end of tomorrow
+  const endOfTomorrow = getEndOfDayTomorrowPST();
+  const secondsUntil = Math.max(0, Math.floor((endOfTomorrow.getTime() - now.getTime()) / 1000));
+
+  // Ensure we never exceed 24 hours (86400 seconds)
+  return Math.min(secondsUntil, 86400);
 }
 
 /**
@@ -75,4 +112,12 @@ export function secondsUntilMidnightPST(): number {
  */
 export function isLocationInContinentalUS(latitude: number, longitude: number): boolean {
   return latitude >= 24.0 && latitude <= 49.5 && longitude >= -125.0 && longitude <= -66.5;
+}
+
+/**
+ * Check if a reveal time has passed (i.e., it's safe to show the target number).
+ */
+export function hasRevealTimePassed(revealTime: Date): boolean {
+  const now = new Date();
+  return now.getTime() >= revealTime.getTime();
 }

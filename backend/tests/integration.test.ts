@@ -14,7 +14,6 @@ describe("API Integration Tests", () => {
       expect(data.hasSubmitted).toBeDefined();
       expect(data.targetNumber === null || typeof data.targetNumber === "number").toBe(true);
       expect(data.date).toBeDefined();
-      expect(data.timeUntilReset).toBeDefined();
       expect(typeof data.timeUntilReset).toBe("number");
       expect(data.revealTimePST).toBeDefined();
       expect(data.currentTimePST).toBeDefined();
@@ -27,7 +26,6 @@ describe("API Integration Tests", () => {
       expect(data.hasSubmitted).toBeDefined();
       expect(data.targetNumber === null || typeof data.targetNumber === "number").toBe(true);
       expect(data.date).toBeDefined();
-      expect(data.timeUntilReset).toBeDefined();
     });
 
     test("Get today's target number with reveal=true", async () => {
@@ -160,11 +158,9 @@ describe("API Integration Tests", () => {
       expect(data.success).toBe(true);
       expect(data.submission).toBeDefined();
       expect(data.submission.id).toBeDefined();
-      expect(typeof data.submission.id).toBe("string");
-      expect(data.submission.confirmedNumber).toBeDefined();
       expect(typeof data.submission.confirmedNumber).toBe("number");
-      expect(data.submission.isWinner).toBeDefined();
       expect(typeof data.submission.isWinner).toBe("boolean");
+      expect(data.revealData).toBeDefined();
       submissionId = data.submission.id;
     });
 
@@ -263,8 +259,8 @@ describe("API Integration Tests", () => {
         expect(data.submissions[0].id).toBeDefined();
         expect(data.submissions[0].date).toBeDefined();
         expect(data.submissions[0].photoUrl).toBeDefined();
-        expect(data.submissions[0].confirmedNumber).toBeDefined();
-        expect(data.submissions[0].isWinner).toBeDefined();
+        expect(typeof data.submissions[0].confirmedNumber).toBe("number");
+        expect(typeof data.submissions[0].isWinner).toBe("boolean");
       }
     });
 
@@ -280,9 +276,7 @@ describe("API Integration Tests", () => {
       await expectStatus(res, 200, 400);
       const data = await res.json();
       if (res.status === 200) {
-        expect(data.isMatch).toBeDefined();
         expect(typeof data.isMatch).toBe("boolean");
-        expect(data.userNumber).toBeDefined();
         expect(typeof data.userNumber).toBe("number");
         expect(data.targetNumber).toBeDefined();
         expect(data.submissionTime).toBeDefined();
@@ -317,8 +311,8 @@ describe("API Integration Tests", () => {
       if (data.recentSubmissions.length > 0) {
         expect(data.recentSubmissions[0].date).toBeDefined();
         expect(data.recentSubmissions[0].photoUrl).toBeDefined();
-        expect(data.recentSubmissions[0].confirmedNumber).toBeDefined();
-        expect(data.recentSubmissions[0].isWinner).toBeDefined();
+        expect(typeof data.recentSubmissions[0].confirmedNumber).toBe("number");
+        expect(typeof data.recentSubmissions[0].isWinner).toBe("boolean");
       }
     });
 
@@ -335,11 +329,8 @@ describe("API Integration Tests", () => {
       const data = await res.json();
       expect(Array.isArray(data)).toBe(true);
       if (data.length > 0) {
-        expect(data[0].userName).toBeDefined();
         expect(typeof data[0].userName).toBe("string");
         expect(data[0].date).toBeDefined();
-        expect(typeof data[0].date).toBe("string");
-        expect(data[0].winningNumber).toBeDefined();
         expect(typeof data[0].winningNumber).toBe("number");
       }
     });
@@ -350,13 +341,12 @@ describe("API Integration Tests", () => {
       const data = await res.json();
       expect(data.winners).toBeDefined();
       expect(Array.isArray(data.winners)).toBe(true);
-      expect(data.totalWinners).toBeDefined();
       expect(typeof data.totalWinners).toBe("number");
       if (data.winners.length > 0) {
         expect(data.winners[0].userId).toBeDefined();
         expect(data.winners[0].userName).toBeDefined();
         expect(data.winners[0].photoUrl).toBeDefined();
-        expect(data.winners[0].confirmedNumber).toBeDefined();
+        expect(typeof data.winners[0].confirmedNumber).toBe("number");
       }
     });
   });

@@ -4,7 +4,7 @@ import { gateway } from '@specific-dev/framework';
 import { generateText } from 'ai';
 import * as schema from '../db/schema/schema.js';
 import type { App } from '../index.js';
-import { getTodayPST, formatAsPST, secondsUntilMidnightPST, getMidnightTomorrowPST, getCurrentTimePST, isLocationInContinentalUS } from '../utils/timezone.js';
+import { getTodayPST, formatAsPST, secondsUntilEndOfDayPST, getEndOfDayTomorrowPST, getCurrentTimePST, isLocationInContinentalUS, hasRevealTimePassed } from '../utils/timezone.js';
 
 export function registerNumSnapRoutes(app: App) {
   const requireAuth = app.requireAuth();
@@ -63,8 +63,8 @@ export function registerNumSnapRoutes(app: App) {
         app.logger.info({ targetNumber, date: todayPST }, 'Daily number generated');
       }
 
-      const timeUntilReset = secondsUntilMidnightPST();
-      const revealTimePST = formatAsPST(getMidnightTomorrowPST());
+      const timeUntilReset = secondsUntilEndOfDayPST();
+      const revealTimePST = formatAsPST(getEndOfDayTomorrowPST());
 
       return {
         hasSubmitted: false,
@@ -409,7 +409,7 @@ export function registerNumSnapRoutes(app: App) {
       }
 
       // Calculate reveal time (midnight PST of the day after submission)
-      const revealTimePST = getMidnightTomorrowPST();
+      const revealTimePST = getEndOfDayTomorrowPST();
 
       // Create submission
       const submitted = await app.db
@@ -792,17 +792,23 @@ export function registerNumSnapRoutes(app: App) {
         numbersByDate.set(String(dn.date), Number(dn.targetNumber));
       }
 
-      const formatted = submissions.map((sub) => ({
-        id: sub.id,
-        date: sub.submissionDate,
-        photoUrl: sub.photoUrl,
-        confirmedNumber: sub.confirmedNumber,
-        targetNumber: numbersByDate.get(sub.submissionDate) ?? 0,
-        isWinner: sub.isWinner,
-        revealTimePST: sub.revealTimePST ? formatAsPST(sub.revealTimePST) : null,
-        latitude: sub.latitude ? String(sub.latitude) : null,
-        longitude: sub.longitude ? String(sub.longitude) : null,
-      }));
+      const formatted = submissions.map((sub) => {
+        // Only show target number if reveal time has passed
+        const canReveal = sub.revealTimePST ? hasRevealTimePassed(sub.revealTimePST) : false;
+        const targetNumber = canReveal ? (numbersByDate.get(sub.submissionDate) ?? 0) : 0;
+
+        return {
+          id: sub.id,
+          date: sub.submissionDate,
+          photoUrl: sub.photoUrl,
+          confirmedNumber: sub.confirmedNumber,
+          targetNumber,
+          isWinner: sub.isWinner,
+          revealTimePST: sub.revealTimePST ? formatAsPST(sub.revealTimePST) : null,
+          latitude: sub.latitude ? String(sub.latitude) : null,
+          longitude: sub.longitude ? String(sub.longitude) : null,
+        };
+      });
 
       app.logger.info({ userId, count: formatted.length }, 'User submissions fetched');
       return { currentTimePST, submissions: formatted };
