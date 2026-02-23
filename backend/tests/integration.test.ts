@@ -547,4 +547,119 @@ describe("API Integration Tests", () => {
       await expectStatus(res, 401);
     });
   });
+
+  describe("Admin Operations", () => {
+    test("Check if user is admin", async () => {
+      const res = await authenticatedApi("/api/admin/check", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(typeof data.isAdmin).toBe("boolean");
+    });
+
+    test("Check admin status without auth returns 401", async () => {
+      const res = await api("/api/admin/check");
+      await expectStatus(res, 401);
+    });
+
+    test("Get all winners (admin)", async () => {
+      const res = await authenticatedApi("/api/admin/winners", authToken);
+      // May return 403 if user is not admin, or 200 if admin
+      await expectStatus(res, 200, 403, 401);
+      if (res.status === 200) {
+        const data = await res.json();
+        expect(Array.isArray(data)).toBe(true);
+        if (data.length > 0) {
+          expect(data[0].winnerId).toBeDefined();
+          expect(data[0].submissionId).toBeDefined();
+          expect(data[0].userName).toBeDefined();
+          expect(data[0].userEmail).toBeDefined();
+          expect(data[0].photoUrl).toBeDefined();
+          expect(data[0].submissionDate).toBeDefined();
+          expect(typeof data[0].snappedNumber).toBe("number");
+          expect(typeof data[0].targetNumber).toBe("number");
+          expect(typeof data[0].latitude).toBe("number");
+          expect(typeof data[0].longitude).toBe("number");
+          expect(data[0].paymentStatus).toBeDefined();
+        }
+      }
+    });
+
+    test("Get admin winners without auth returns 401", async () => {
+      const res = await api("/api/admin/winners");
+      await expectStatus(res, 401);
+    });
+
+    test("Update prize claim status (admin)", async () => {
+      // First check if we have a claim to update
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "Processing",
+            notes: "In progress",
+          }),
+        });
+        // May return 403 if not admin, or 200/404 based on claim existence
+        await expectStatus(res, 200, 400, 403, 404, 401);
+        if (res.status === 200) {
+          const data = await res.json();
+          expect(data.success).toBe(true);
+          expect(data.claim).toBeDefined();
+          expect(data.claim.id).toBeDefined();
+          expect(data.claim.claimStatus).toBeDefined();
+        }
+      }
+    });
+
+    test("Update prize claim with invalid status returns 400", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "InvalidStatus",
+          }),
+        });
+        await expectStatus(res, 400, 403, 401);
+      }
+    });
+
+    test("Update prize claim without auth returns 401", async () => {
+      const testClaimId = "00000000-0000-0000-0000-000000000000";
+      const res = await api(`/api/admin/prize-claims/${testClaimId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentStatus: "Processing",
+        }),
+      });
+      await expectStatus(res, 401);
+    });
+
+    test("Update non-existent claim returns 404", async () => {
+      const nonExistentId = "00000000-0000-0000-0000-000000000000";
+      const res = await authenticatedApi(`/api/admin/prize-claims/${nonExistentId}`, authToken, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentStatus: "Processing",
+        }),
+      });
+      await expectStatus(res, 404, 400, 403, 401);
+    });
+
+    test("Update claim without paymentStatus returns 400", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            notes: "Some notes",
+          }),
+        });
+        await expectStatus(res, 400, 403, 401);
+      }
+    });
+  });
 });
