@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "build-a-full-daily-s",
-    "slug": "build-a-full-daily-s",
+    "name": "NumSnap Daily",
+    "slug": "NumSnap Daily",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
@@ -59,7 +59,7 @@
         }
       ]
     ],
-    "scheme": "build-a-full-daily-s",
+    "scheme": "NumSnap Daily",
     "experiments": {
       "typedRoutes": true
     },

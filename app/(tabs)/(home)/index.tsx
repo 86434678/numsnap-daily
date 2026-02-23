@@ -347,39 +347,6 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <IconSymbol 
-                ios_icon_name="flame.fill" 
-                android_material_icon_name="local-fire-department" 
-                size={24} 
-                color={colors.warning} 
-              />
-              <Text style={styles.statValue}>{streakDisplay}</Text>
-              <Text style={styles.statLabel}>Streak</Text>
-            </View>
-            <View style={styles.statCard}>
-              <IconSymbol 
-                ios_icon_name="photo.fill" 
-                android_material_icon_name="photo-camera" 
-                size={24} 
-                color={colors.primary} 
-              />
-              <Text style={styles.statValue}>{submissionsDisplay}</Text>
-              <Text style={styles.statLabel}>Snaps</Text>
-            </View>
-            <View style={styles.statCard}>
-              <IconSymbol 
-                ios_icon_name="trophy.fill" 
-                android_material_icon_name="emoji-events" 
-                size={24} 
-                color={colors.success} 
-              />
-              <Text style={styles.statValue}>{winsDisplay}</Text>
-              <Text style={styles.statLabel}>Wins</Text>
-            </View>
-          </View>
-
           {!hasSubmittedToday ? (
             <TouchableOpacity 
               style={styles.snapButton} 
@@ -435,6 +402,39 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="flame.fill" 
+                android_material_icon_name="local-fire-department" 
+                size={24} 
+                color={colors.warning} 
+              />
+              <Text style={styles.statValue}>{streakDisplay}</Text>
+              <Text style={styles.statLabel}>Streak</Text>
+            </View>
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="photo.fill" 
+                android_material_icon_name="photo-camera" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <Text style={styles.statValue}>{submissionsDisplay}</Text>
+              <Text style={styles.statLabel}>Snaps</Text>
+            </View>
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="trophy.fill" 
+                android_material_icon_name="emoji-events" 
+                size={24} 
+                color={colors.success} 
+              />
+              <Text style={styles.statValue}>{winsDisplay}</Text>
+              <Text style={styles.statLabel}>Wins</Text>
+            </View>
+          </View>
 
           <View style={styles.secondaryActions}>
             <TouchableOpacity style={styles.secondaryButton} onPress={handleViewWinners}>
@@ -645,35 +645,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 15,
-    padding: 15,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
   snapButton: {
     marginBottom: 20,
     borderRadius: 25,
@@ -737,6 +708,35 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 15,
+    padding: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   secondaryActions: {
     flexDirection: 'row',
