@@ -2,12 +2,16 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Stack, useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedGet } from "@/utils/api";
+
+// Ad integration toggle (set to true when ads are integrated)
+const AD_INTEGRATION_ENABLED = false;
+const MAX_HINTS_PER_DAY = 2;
 
 export default function HomeScreen() {
   const { colors: themeColors } = useTheme();
@@ -18,6 +22,9 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{ currentStreak: number; totalSubmissions: number; totalWins: number } | null>(null);
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+  const [hintText, setHintText] = useState<string>('');
+  const [hintsUsed, setHintsUsed] = useState<number>(0);
+  const [showHintModal, setShowHintModal] = useState(false);
 
   console.log('HomeScreen: User authenticated:', !!user);
 
@@ -120,6 +127,56 @@ export default function HomeScreen() {
     return `${hoursStr}:${minutesStr}:${secsStr}`;
   };
 
+  const generateHint = () => {
+    const hints = [
+      'The target is between 1 and 500000',
+      'The target is between 100000 and 999999',
+      'The target is a 6-digit number',
+      'The target is between 50000 and 750000',
+      'The target is between 200000 and 800000',
+    ];
+    const randomIndex = Math.floor(Math.random() * hints.length);
+    return hints[randomIndex];
+  };
+
+  const handleWatchAdForHint = () => {
+    console.log('HomeScreen: User tapped Watch Ad for Hint button');
+    
+    // Check if hints limit reached
+    if (hintsUsed >= MAX_HINTS_PER_DAY) {
+      setShowHintModal(true);
+      setHintText(`You've used all ${MAX_HINTS_PER_DAY} hints for today. Try again tomorrow!`);
+      return;
+    }
+
+    // Check if challenge is active
+    if (timeUntilReset <= 0) {
+      setShowHintModal(true);
+      setHintText('Hints are only available during the active daily challenge.');
+      return;
+    }
+
+    if (!AD_INTEGRATION_ENABLED) {
+      // Pre-launch: Show free hint
+      console.log('HomeScreen: Showing free hint (ads not integrated yet)');
+      const hint = generateHint();
+      setHintText(`Ads coming soon! Here's a free hint: ${hint}`);
+      setHintsUsed(prev => prev + 1);
+      setShowHintModal(true);
+    } else {
+      // TODO: Backend Integration - Trigger rewarded ad and get hint
+      // When ads are integrated:
+      // 1. Load and show rewarded ad
+      // 2. On ad completion, call backend to get hint
+      // 3. Update hintsUsed and display hint
+      console.log('HomeScreen: Would trigger rewarded ad here');
+    }
+  };
+
+  const closeHintModal = () => {
+    setShowHintModal(false);
+  };
+
   const handleSnapPhoto = () => {
     console.log('HomeScreen: User tapped Snap a Number button');
     router.push('/camera');
@@ -159,6 +216,7 @@ export default function HomeScreen() {
   const streakDisplay = stats?.currentStreak || 0;
   const submissionsDisplay = stats?.totalSubmissions || 0;
   const winsDisplay = stats?.totalWins || 0;
+  const hintsRemainingText = `${hintsUsed}/${MAX_HINTS_PER_DAY} hints used`;
 
   return (
     <>
@@ -198,7 +256,53 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.timerLabel}>until next number</Text>
             <Text style={styles.timezoneNote}>All times in PST</Text>
-            <Text style={styles.hintText}>Submit your snap to reveal!</Text>
+
+            {!hasSubmittedToday && (
+              <>
+                <TouchableOpacity 
+                  style={styles.hintButton}
+                  onPress={handleWatchAdForHint}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={[colors.secondary, '#9B59B6']}
+                    style={styles.hintButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <IconSymbol 
+                      ios_icon_name="play.circle.fill" 
+                      android_material_icon_name="play-circle-filled" 
+                      size={24} 
+                      color="#FFFFFF" 
+                    />
+                    <Text style={styles.hintButtonText}>Get a Hint (Watch Short Ad)</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <Text style={styles.hintsRemaining}>{hintsRemainingText}</Text>
+
+                <Text style={styles.legalNote}>
+                  Watching ads is optional and does not increase your chances of winning beyond free methods.
+                </Text>
+
+                {hintText && !showHintModal ? (
+                  <View style={styles.hintDisplay}>
+                    <IconSymbol 
+                      ios_icon_name="lightbulb.fill" 
+                      android_material_icon_name="lightbulb" 
+                      size={20} 
+                      color={colors.warning} 
+                    />
+                    <Text style={styles.hintDisplayText}>{hintText}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+
+            {hasSubmittedToday && (
+              <Text style={styles.hintText}>Submit your snap to reveal!</Text>
+            )}
           </View>
 
           <View style={styles.statsRow}>
@@ -318,6 +422,33 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </LinearGradient>
+
+      <Modal
+        visible={showHintModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeHintModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <IconSymbol 
+              ios_icon_name="lightbulb.fill" 
+              android_material_icon_name="lightbulb" 
+              size={48} 
+              color={colors.warning} 
+            />
+            <Text style={styles.modalTitle}>Hint</Text>
+            <Text style={styles.modalText}>{hintText}</Text>
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={closeHintModal}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modalButtonText}>Got it!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -414,6 +545,62 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 3,
     fontStyle: 'italic',
+    marginBottom: 15,
+  },
+  hintButton: {
+    marginTop: 15,
+    borderRadius: 15,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    width: '100%',
+  },
+  hintButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  hintButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  hintsRemaining: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  legalNote: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 10,
+  },
+  hintDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 15,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  hintDisplayText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '600',
   },
   statsRow: {
     flexDirection: 'row',
@@ -548,5 +735,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    maxWidth: 400,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  modalText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 25,
+  },
+  modalButton: {
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });

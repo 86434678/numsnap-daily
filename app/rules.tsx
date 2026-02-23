@@ -51,6 +51,25 @@ export default function RulesScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Optional Hints</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              Users may watch short ads for hints to help guess the target number (e.g., a range or higher/lower indication). Watching ads is optional and does not increase your chances of winning beyond what&apos;s available through free methods.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              No purchase or ad view is necessary to enter or win; hints are provided as a convenience and do not affect core entry odds or sweepstakes rules.
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • Hints are limited to 2 per daily challenge
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • Hints are only available during the active PST countdown period
+            </Text>
+            <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+              • Hints provide vague information (e.g., number ranges) and do not guarantee a win
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Timing & Time Zone</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               All daily challenge timing operates in Pacific Standard Time (PST, UTC-8):
@@ -113,7 +132,7 @@ export default function RulesScreen() {
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>No Purchase Necessary</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              This is a free-to-play sweepstakes. No purchase is necessary to enter or win. Entry is free and open to all registered users.
+              This is a free-to-play sweepstakes. No purchase is necessary to enter or win. Entry is free and open to all registered users. Watching ads for hints is optional and does not increase your chances of winning beyond what is available through free methods.
             </Text>
           </View>
 
