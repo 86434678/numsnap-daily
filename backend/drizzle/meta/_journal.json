@@ -15,6 +15,13 @@
       "when": 1771804342283,
       "tag": "20260222235222_abnormal_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771830820987,
+      "tag": "20260223071340_old_photon",
+      "breakpoints": true
     }
   ]
 }

@@ -29,3 +29,18 @@ export const userStats = pgTable('user_stats', {
   totalWins: integer('total_wins').default(0).notNull(),
   lastSubmissionDate: date('last_submission_date'),
 });
+
+export const prizeClaims = pgTable('prize_claims', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  submissionId: uuid('submission_id').notNull(),
+  paymentMethod: text('payment_method').notNull(), // 'paypal', 'venmo', 'egift'
+  paymentInfo: text('payment_info').notNull(),
+  confirmedAccuracy: boolean('confirmed_accuracy').notNull(),
+  claimStatus: text('claim_status').default('pending').notNull(), // 'pending', 'processing', 'completed', 'expired'
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

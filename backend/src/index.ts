@@ -2,6 +2,7 @@ import { createApplication } from "@specific-dev/framework";
 import * as appSchema from './db/schema/schema.js';
 import * as authSchema from './db/schema/auth-schema.js';
 import { registerNumSnapRoutes } from './routes/numsnap.js';
+import { registerPrizeRoutes } from './routes/prizes.js';
 
 const schema = { ...appSchema, ...authSchema };
 
@@ -12,6 +13,7 @@ app.withAuth();
 app.withStorage();
 
 registerNumSnapRoutes(app);
+registerPrizeRoutes(app);
 
 await app.run();
 app.logger.info('NumSnap Daily API running');

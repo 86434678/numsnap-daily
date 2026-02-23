@@ -3,8 +3,10 @@ import { api, authenticatedApi, signUpTestUser, expectStatus, createTestFile } f
 
 describe("API Integration Tests", () => {
   let authToken: string;
+  let userId: string;
   let submissionId: string;
   let photoUrl: string;
+  let claimId: string;
 
   describe("Daily Number", () => {
     test("Get today's target number without reveal", async () => {
@@ -42,10 +44,56 @@ describe("API Integration Tests", () => {
     test("Sign up test user", async () => {
       const { token, user } = await signUpTestUser();
       authToken = token;
+      userId = user.id;
       expect(authToken).toBeDefined();
       expect(typeof authToken).toBe("string");
-      expect(user.id).toBeDefined();
+      expect(userId).toBeDefined();
       expect(user.email).toBeDefined();
+    });
+  });
+
+  describe("Age Verification", () => {
+    test("Get age verification status", async () => {
+      const res = await authenticatedApi("/api/user/age-status", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(typeof data.ageVerified).toBe("boolean");
+    });
+
+    test("Get age status without auth returns 401", async () => {
+      const res = await api("/api/user/age-status");
+      await expectStatus(res, 401);
+    });
+
+    test("Verify age successfully", async () => {
+      const res = await authenticatedApi("/api/user/verify-age", authToken, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ageVerified: true }),
+      });
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.ageVerified).toBe(true);
+    });
+
+    test("Verify age without ageVerified field returns 400", async () => {
+      const { token } = await signUpTestUser();
+      const res = await authenticatedApi("/api/user/verify-age", token, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Verify age without auth returns 401", async () => {
+      const res = await api("/api/user/verify-age", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ageVerified: true }),
+      });
+      await expectStatus(res, 401);
     });
   });
 
@@ -348,6 +396,155 @@ describe("API Integration Tests", () => {
         expect(data.winners[0].photoUrl).toBeDefined();
         expect(typeof data.winners[0].confirmedNumber).toBe("number");
       }
+    });
+  });
+
+  describe("Prize Claims", () => {
+    test("Get eligible prize claims", async () => {
+      const res = await authenticatedApi("/api/prize-claims/eligible", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(Array.isArray(data)).toBe(true);
+      if (data.length > 0) {
+        expect(data[0].submissionId).toBeDefined();
+        expect(typeof data[0].winningNumber).toBe("number");
+        expect(data[0].date).toBeDefined();
+        expect(typeof data[0].prizeAmount).toBe("number");
+        expect(typeof data[0].canClaim).toBe("boolean");
+        expect(data[0].claimDeadline).toBeDefined();
+      }
+    });
+
+    test("Get eligible claims without auth returns 401", async () => {
+      const res = await api("/api/prize-claims/eligible");
+      await expectStatus(res, 401);
+    });
+
+    test("Get user's prize claims", async () => {
+      const res = await authenticatedApi("/api/prize-claims/my-claims", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(Array.isArray(data)).toBe(true);
+      if (data.length > 0) {
+        expect(data[0].claimId).toBeDefined();
+        expect(data[0].submissionId).toBeDefined();
+        expect(typeof data[0].winningNumber).toBe("number");
+        expect(data[0].date).toBeDefined();
+        expect(data[0].paymentMethod).toBeDefined();
+        expect(data[0].paymentInfo).toBeDefined();
+        expect(data[0].claimStatus).toBeDefined();
+        expect(data[0].claimedAt).toBeDefined();
+        expect(data[0].expiresAt).toBeDefined();
+      }
+    });
+
+    test("Get my claims without auth returns 401", async () => {
+      const res = await api("/api/prize-claims/my-claims");
+      await expectStatus(res, 401);
+    });
+
+    test("Claim a prize with valid data", async () => {
+      // For this test, we'll attempt to claim a prize with the submissionId we created
+      // The endpoint should validate if the submission is eligible
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "paypal",
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      // Status could be 200 if eligible, or 400/403 if not
+      await expectStatus(res, 200, 400, 403);
+      if (res.status === 200) {
+        const data = await res.json();
+        expect(data.success).toBe(true);
+        expect(data.claimId).toBeDefined();
+        expect(data.expiresAt).toBeDefined();
+        claimId = data.claimId;
+      }
+    });
+
+    test("Claim prize without submissionId returns 400", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethod: "paypal",
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Claim prize without paymentMethod returns 400", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Claim prize without paymentInfo returns 400", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "paypal",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Claim prize without confirmedAccuracy returns 400", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "paypal",
+          paymentInfo: "test@example.com",
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Claim prize with invalid paymentMethod returns 400", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "invalid_method",
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Claim prize without auth returns 401", async () => {
+      const res = await api("/api/prize-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "paypal",
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 401);
     });
   });
 });
