@@ -28,7 +28,6 @@ export default function HomeScreen() {
   const [showHintModal, setShowHintModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
   const [checkingAge, setCheckingAge] = useState(true);
-  const [hasCheckedAge, setHasCheckedAge] = useState(false);
 
   console.log('HomeScreen: User authenticated:', !!user);
 
@@ -44,20 +43,25 @@ export default function HomeScreen() {
         currentTimePST?: string;
       }>('/api/daily-number');
       console.log('[API] /api/daily-number response:', data);
+      // Cap at 86400 seconds (24 hours max) as a safety measure
       setTimeUntilReset(Math.min(86400, Math.max(0, data.timeUntilReset)));
       setHasSubmittedToday(data.hasSubmitted);
     } catch (error) {
       console.error('HomeScreen: Error fetching daily number:', error);
+      // Fallback: calculate seconds until 11:59:59 PM PST (UTC-8)
       const now = new Date();
-      const PST_OFFSET_MS = 8 * 60 * 60 * 1000;
+      const PST_OFFSET_MS = 8 * 60 * 60 * 1000; // UTC-8
       const nowPST = new Date(now.getTime() - PST_OFFSET_MS);
+      // Target: 23:59:59 PST today
       const resetPST = new Date(nowPST);
       resetPST.setUTCHours(23, 59, 59, 0);
       let secondsUntilReset = Math.floor((resetPST.getTime() - nowPST.getTime()) / 1000);
+      // If already past 11:59:59 PM PST today, target tomorrow's 11:59:59 PM PST
       if (secondsUntilReset <= 0) {
         resetPST.setUTCDate(resetPST.getUTCDate() + 1);
         secondsUntilReset = Math.floor((resetPST.getTime() - nowPST.getTime()) / 1000);
       }
+      // Cap at 86400 seconds (24 hours max)
       setTimeUntilReset(Math.min(86400, Math.max(0, secondsUntilReset)));
     } finally {
       setLoading(false);
@@ -100,20 +104,18 @@ export default function HomeScreen() {
       const data = await authenticatedGet<{ ageVerified: boolean }>('/api/user/age-status');
       console.log('[API] Age verification status:', data);
       setAgeVerified(data.ageVerified);
-      setHasCheckedAge(true);
       
-      if (!data.ageVerified && !hasCheckedAge) {
+      if (!data.ageVerified) {
         console.log('HomeScreen: User not age verified - redirecting to age verification');
         router.push('/age-verification');
       }
     } catch (error) {
       console.error('HomeScreen: Error checking age verification:', error);
       setAgeVerified(false);
-      setHasCheckedAge(true);
     } finally {
       setCheckingAge(false);
     }
-  }, [router, hasCheckedAge]);
+  }, [router]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -122,23 +124,22 @@ export default function HomeScreen() {
   }, [authLoading, user]);
 
   useEffect(() => {
-    if (user && !hasCheckedAge) {
-      console.log('HomeScreen: Initial load - checking age verification and fetching data');
+    if (user) {
+      console.log('HomeScreen: Checking age verification and fetching data');
       checkAgeVerification();
       fetchDailyNumber();
       fetchUserStats();
     }
-  }, [user, hasCheckedAge, checkAgeVerification, fetchDailyNumber, fetchUserStats]);
+  }, [user, checkAgeVerification, fetchDailyNumber, fetchUserStats]);
 
+  // Re-check age verification when screen comes back into focus (e.g. after age-verification screen)
   useFocusEffect(
     useCallback(() => {
-      if (user && hasCheckedAge) {
+      if (user) {
         console.log('HomeScreen: Screen focused - re-checking age verification');
         checkAgeVerification();
-        fetchDailyNumber();
-        fetchUserStats();
       }
-    }, [user, hasCheckedAge, checkAgeVerification, fetchDailyNumber, fetchUserStats])
+    }, [user, checkAgeVerification])
   );
 
   useEffect(() => {
@@ -175,12 +176,14 @@ export default function HomeScreen() {
   const handleWatchAdForHint = () => {
     console.log('HomeScreen: User tapped Watch Ad for Hint button');
     
+    // Check if hints limit reached
     if (hintsUsed >= MAX_HINTS_PER_DAY) {
       setShowHintModal(true);
       setHintText(`You've used all ${MAX_HINTS_PER_DAY} hints for today. Try again tomorrow!`);
       return;
     }
 
+    // Check if challenge is active
     if (timeUntilReset <= 0) {
       setShowHintModal(true);
       setHintText('Hints are only available during the active daily challenge.');
@@ -188,12 +191,18 @@ export default function HomeScreen() {
     }
 
     if (!AD_INTEGRATION_ENABLED) {
+      // Pre-launch: Show free hint
       console.log('HomeScreen: Showing free hint (ads not integrated yet)');
       const hint = generateHint();
       setHintText(`Ads coming soon! Here's a free hint: ${hint}`);
       setHintsUsed(prev => prev + 1);
       setShowHintModal(true);
     } else {
+      // TODO: Backend Integration - Trigger rewarded ad and get hint
+      // When ads are integrated:
+      // 1. Load and show rewarded ad
+      // 2. On ad completion, call backend to get hint
+      // 3. Update hintsUsed and display hint
       console.log('HomeScreen: Would trigger rewarded ad here');
     }
   };
@@ -205,6 +214,7 @@ export default function HomeScreen() {
   const handleSnapPhoto = () => {
     console.log('HomeScreen: User tapped Snap a Number button');
     
+    // Check age verification before allowing snap
     if (ageVerified === false) {
       console.log('HomeScreen: User not age verified - redirecting to age verification');
       router.push('/age-verification');
@@ -233,7 +243,7 @@ export default function HomeScreen() {
     return <Redirect href="/auth" />;
   }
 
-  if (authLoading || loading || checkingAge) {
+  if (authLoading || loading) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -526,7 +536,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
   },
   cardLabel: {
     fontSize: 16,
@@ -643,7 +652,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
   },
   snapButtonGradient: {
     flexDirection: 'row',
@@ -685,7 +693,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    elevation: 6,
   },
   viewResultsGradient: {
     flexDirection: 'row',
@@ -715,7 +722,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
   statValue: {
     fontSize: 28,
@@ -790,7 +796,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
   },
   modalTitle: {
     fontSize: 24,

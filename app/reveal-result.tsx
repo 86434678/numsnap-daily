@@ -29,7 +29,6 @@ function ConfettiPiece({ x, delay, color, size }: ConfettiPieceProps) {
     translateX.value = withDelay(delay, withTiming((Math.random() - 0.5) * 200, { duration: 3000 }));
     rotate.value = withDelay(delay, withTiming(Math.random() * 720, { duration: 3000 }));
     opacity.value = withDelay(delay + 2000, withTiming(0, { duration: 1000 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -112,7 +111,6 @@ export default function RevealResultScreen() {
       // Otherwise fetch from API (e.g. user navigated directly from home screen)
       fetchRevealData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRevealData = async () => {

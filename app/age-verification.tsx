@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -32,9 +32,8 @@ export default function AgeVerificationScreen() {
       console.log('Age verification response:', response);
 
       if (response.success) {
-        console.log('Age verified successfully - navigating to home');
-        // Use replace instead of back to ensure we go to home screen
-        router.replace('/(tabs)/(home)/');
+        console.log('Age verified successfully - navigating back');
+        router.back();
       }
     } catch (error) {
       console.error('Age verification error:', error);

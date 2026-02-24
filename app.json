@@ -8,33 +8,38 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/app-icon-jte.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6A1B9A"
+      "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.kodyfoote.numsnapdaily",
-      "buildNumber": "1",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.numsnapdaily",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
         "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
-        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
+        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries and prevent fraud."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app-icon-jte.png",
-        "backgroundColor": "#6A1B9A"
+        "backgroundColor": "#000000"
       },
-      "package": "com.kodyfoote.numsnapdaily",
-      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.numsnapdaily",
       "permissions": [
         "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ]
+    },
+    "web": {
+      "favicon": "./assets/images/final_quest_240x240.png",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-font",
@@ -50,7 +55,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
+          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries and prevent fraud."
         }
       ]
     ],
