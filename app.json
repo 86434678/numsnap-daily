@@ -1,45 +1,39 @@
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "NumSnap Daily",
+    "slug": "numsnap-daily",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon-jte.png",
+    "icon": "./assets/images/app-icon-jte.png",  // Keep or update to final icon
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/app-icon-jte.png",
+      "image": "./assets/images/splash.png",  // Prefer a dedicated splash image
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#6A1B9A"  // Match your purple theme instead of black
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.numsnapdaily",
+      "supportsTablet": false,  // If not tablet-optimized
+      "bundleIdentifier": "com.kodyfoote.numsnapdaily",  // Change to your domain/email
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
         "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
-        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries and prevent fraud."
+        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app-icon-jte.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#6A1B9A"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.numsnapdaily",
+      "package": "com.kodyfoote.numsnapdaily",  // Change this too
       "permissions": [
         "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
+        // Remove READ/WRITE_EXTERNAL_STORAGE if not needed (modern Expo handles scoped)
       ]
-    },
-    "web": {
-      "favicon": "./assets/images/final_quest_240x240.png",
-      "bundler": "metro"
     },
     "plugins": [
       "expo-font",
@@ -55,11 +49,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries and prevent fraud."
+          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
         }
       ]
     ],
-    "scheme": "NumSnap Daily",
+    "scheme": "numsnapdaily",
     "experiments": {
       "typedRoutes": true
     },
