@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -26,6 +27,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
     visible: false,
     title: '',
@@ -49,18 +51,29 @@ export default function AuthScreen() {
   }
 
   const handleEmailAuth = async () => {
+    console.log("User tapped authentication button", { mode, email });
+    
     if (!email || !password) {
-      showAlert("Error", "Please enter email and password");
+      const errorMsg = "Please enter email and password";
+      setErrorMessage(errorMsg);
+      console.log("Validation error:", errorMsg);
       return;
     }
 
     setLoading(true);
+    setErrorMessage("");
+    console.log("Starting authentication...", { mode, email });
+    
     try {
       if (mode === "signin") {
+        console.log("Attempting sign in with email:", email);
         await signInWithEmail(email, password);
+        console.log("Sign in successful, navigating to home");
         router.replace("/");
       } else {
+        console.log("Attempting sign up with email:", email);
         await signUpWithEmail(email, password, name);
+        console.log("Sign up successful");
         showAlert(
           "Success",
           "Account created! Please check your email to verify your account."
@@ -68,14 +81,41 @@ export default function AuthScreen() {
         router.replace("/");
       }
     } catch (error: any) {
-      showAlert("Error", error.message || "Authentication failed");
+      console.error("Authentication error:", error);
+      
+      // Parse error message to show user-friendly text
+      let displayError = "Authentication failed. Please try again.";
+      
+      if (error.message) {
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes("invalid") || errorMsg.includes("credentials") || errorMsg.includes("401")) {
+          displayError = "Invalid email or password. Please check your credentials and try again.";
+        } else if (errorMsg.includes("email") && errorMsg.includes("exists")) {
+          displayError = "An account with this email already exists. Please sign in instead.";
+        } else if (errorMsg.includes("password") && errorMsg.includes("weak")) {
+          displayError = "Password is too weak. Please use a stronger password.";
+        } else if (errorMsg.includes("network") || errorMsg.includes("fetch")) {
+          displayError = "Network error. Please check your connection and try again.";
+        } else if (errorMsg.includes("422")) {
+          displayError = "Invalid input. Please check your email and password format.";
+        } else {
+          displayError = error.message;
+        }
+      }
+      
+      setErrorMessage(displayError);
+      console.log("Displaying error to user:", displayError);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
+    console.log("User tapped social auth button:", provider);
     setLoading(true);
+    setErrorMessage("");
+    
     try {
       if (provider === "google") {
         await signInWithGoogle();
@@ -84,11 +124,28 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
+      console.log("Social auth successful, navigating to home");
       router.replace("/");
     } catch (error: any) {
-      showAlert("Error", error.message || "Authentication failed");
+      console.error("Social auth error:", error);
+      const displayError = error.message || "Authentication failed. Please try again.";
+      setErrorMessage(displayError);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    console.log("User tapped Forgot Password");
+    showAlert(
+      "Password Recovery",
+      "Password recovery feature coming soon! Please contact support if you need to reset your password."
+    );
+  };
+
+  const clearError = () => {
+    if (errorMessage) {
+      setErrorMessage("");
     }
   };
 
@@ -126,7 +183,10 @@ export default function AuthScreen() {
               style={styles.input}
               placeholder="Name (optional)"
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                setName(text);
+                clearError();
+              }}
               autoCapitalize="words"
             />
           )}
@@ -135,7 +195,10 @@ export default function AuthScreen() {
             style={styles.input}
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              clearError();
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -145,10 +208,19 @@ export default function AuthScreen() {
             style={styles.input}
             placeholder="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              clearError();
+            }}
             secureTextEntry
             autoCapitalize="none"
           />
+
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -164,9 +236,22 @@ export default function AuthScreen() {
             )}
           </TouchableOpacity>
 
+          {mode === "signin" && (
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.switchModeButton}
-            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+            onPress={() => {
+              setMode(mode === "signin" ? "signup" : "signin");
+              setErrorMessage("");
+              console.log("Switched mode to:", mode === "signin" ? "signup" : "signin");
+            }}
           >
             <Text style={styles.switchModeText}>
               {mode === "signin"
@@ -242,6 +327,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#fff",
   },
+  errorContainer: {
+    backgroundColor: "#FFE5E5",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#FF0000",
+  },
+  errorText: {
+    color: "#FF0000",
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "500",
+  },
   primaryButton: {
     height: 50,
     backgroundColor: "#007AFF",
@@ -257,6 +356,16 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  forgotPasswordButton: {
+    marginTop: 12,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  forgotPasswordText: {
+    color: "#007AFF",
+    fontSize: 14,
+    fontWeight: "500",
   },
   switchModeButton: {
     marginTop: 16,
