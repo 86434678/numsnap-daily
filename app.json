@@ -22,19 +22,19 @@
         "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
       }
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-icon-jte.png",
-        "backgroundColor": "#6A1B9A"
-      },
-      "package": "com.kodyfoote.numsnapdaily",  // Change this too
-      "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-        // Remove READ/WRITE_EXTERNAL_STORAGE if not needed (modern Expo handles scoped)
-      ]
-    },
+   "android": {
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/images/app-icon-jte.png",
+    "backgroundColor": "#6A1B9A"
+  },
+  "package": "com.kodyfoote.numsnapdaily",
+  "versionCode": 1,  // <-- Add this line
+  "permissions": [
+    "CAMERA",
+    "ACCESS_FINE_LOCATION",
+    "ACCESS_COARSE_LOCATION"
+  ]
+},
     "plugins": [
       "expo-font",
       "expo-router",
