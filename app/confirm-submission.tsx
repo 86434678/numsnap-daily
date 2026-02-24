@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authenticatedPost, authenticatedUpload } from '@/utils/api';
+import { performOCR, isOCRAvailable } from '@/utils/ocr';
 
 export default function ConfirmSubmissionScreen() {
   const router = useRouter();
@@ -22,16 +23,22 @@ export default function ConfirmSubmissionScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<string>('');
 
   console.log('ConfirmSubmissionScreen: Photo URI:', photoUri);
   console.log('ConfirmSubmissionScreen: Location:', latitude, longitude);
+  console.log('ConfirmSubmissionScreen: On-device OCR available:', isOCRAvailable());
 
-  const processOCR = useCallback(async () => {
-    console.log('[API] Starting OCR process for photo:', photoUri);
+  const processOnDeviceOCR = useCallback(async () => {
+    console.log('[OCR] Starting on-device OCR process for photo:', photoUri);
     setLoading(true);
+    setOcrStatus('Processing image on-device...');
     
     try {
-      console.log('[API] Uploading photo to /api/upload-photo...');
+      // Step 1: Upload photo to backend storage (for submission record)
+      console.log('[Upload] Uploading photo to /api/upload-photo...');
+      setOcrStatus('Uploading photo...');
+      
       const formData = new FormData();
 
       if (Platform.OS === 'web') {
@@ -50,40 +57,45 @@ export default function ConfirmSubmissionScreen() {
         '/api/upload-photo',
         formData
       );
-      console.log('[API] /api/upload-photo response:', uploadResult);
-      const uploadedPhotoUrl = uploadResult.photoUrl;
+      console.log('[Upload] Photo uploaded successfully:', uploadResult.photoUrl);
+      setUploadedPhotoUrl(uploadResult.photoUrl);
 
-      setUploadedPhotoUrl(uploadedPhotoUrl);
-
-      console.log('[API] Requesting /api/process-ocr...');
-      const ocrResult = await authenticatedPost<{ detectedNumber: number | null }>(
-        '/api/process-ocr',
-        { photoUrl: uploadedPhotoUrl }
-      );
-      console.log('[API] /api/process-ocr response:', ocrResult);
+      // Step 2: Perform on-device OCR (zero cloud API calls)
+      console.log('[OCR] Starting on-device text recognition...');
+      setOcrStatus('Detecting numbers on-device...');
+      
+      const ocrResult = await performOCR(photoUri);
+      
+      console.log('[OCR] On-device OCR result:', ocrResult);
+      console.log('[OCR] Detected number:', ocrResult.detectedNumber);
+      console.log('[OCR] All text found:', ocrResult.allText);
+      console.log('[OCR] Confidence:', ocrResult.confidence);
 
       if (ocrResult.detectedNumber !== null && ocrResult.detectedNumber !== undefined) {
         const detectedStr = String(ocrResult.detectedNumber);
         setDetectedNumber(detectedStr);
         setConfirmedNumber(detectedStr);
-        console.log('ConfirmSubmissionScreen: OCR detected number:', detectedStr);
+        console.log('[OCR] Number detected successfully:', detectedStr);
+        setOcrStatus('Number detected!');
       } else {
-        console.log('ConfirmSubmissionScreen: OCR could not detect a number');
+        console.log('[OCR] No number detected, user will enter manually');
         setDetectedNumber('');
         setConfirmedNumber('');
+        setOcrStatus('No number detected - please enter manually');
       }
     } catch (error) {
-      console.error('ConfirmSubmissionScreen: Error processing OCR:', error);
+      console.error('[OCR] Error in on-device OCR process:', error);
       setDetectedNumber('');
       setConfirmedNumber('');
+      setOcrStatus('OCR failed - please enter manually');
     } finally {
       setLoading(false);
     }
   }, [photoUri]);
 
   useEffect(() => {
-    processOCR();
-  }, [processOCR]);
+    processOnDeviceOCR();
+  }, [processOnDeviceOCR]);
 
   const handleSubmit = async () => {
     console.log('ConfirmSubmissionScreen: User tapped Confirm & Submit button');
@@ -106,7 +118,11 @@ export default function ConfirmSubmissionScreen() {
     setSubmitError('');
     
     try {
-      console.log('[API] Requesting /api/submit-entry...');
+      console.log('[API] Submitting entry to /api/submit-entry...');
+      console.log('[API] Confirmed number:', confirmedNumber);
+      console.log('[API] Photo URL:', uploadedPhotoUrl);
+      console.log('[API] Location:', latitude, longitude);
+      
       const result = await authenticatedPost<{
         success: boolean;
         submission: { id: string; confirmedNumber: number; isWinner: boolean };
@@ -147,7 +163,6 @@ export default function ConfirmSubmissionScreen() {
       const rawMessage = error?.message || 'Failed to submit entry. Please try again.';
       
       // Parse the error message from the API response body if present
-      // API errors come as: "API error: 400 - {"error":"..."}"
       let parsedMessage = rawMessage;
       try {
         const jsonMatch = rawMessage.match(/\{.*\}/s);
@@ -228,15 +243,44 @@ export default function ConfirmSubmissionScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Detecting number...</Text>
+            <Text style={styles.loadingText}>{ocrStatus}</Text>
+            <View style={styles.ocrBadge}>
+              <IconSymbol 
+                ios_icon_name="cpu" 
+                android_material_icon_name="memory" 
+                size={16} 
+                color={colors.success} 
+              />
+              <Text style={styles.ocrBadgeText}>On-Device Processing</Text>
+            </View>
           </View>
         ) : (
           <>
+            <View style={styles.ocrInfoCard}>
+              <IconSymbol 
+                ios_icon_name="checkmark.shield.fill" 
+                android_material_icon_name="verified-user" 
+                size={24} 
+                color={colors.success} 
+              />
+              <View style={styles.ocrInfoTextContainer}>
+                <Text style={styles.ocrInfoTitle}>100% On-Device OCR</Text>
+                <Text style={styles.ocrInfoSubtitle}>
+                  {Platform.OS === 'ios' ? 'Apple Vision Framework' : 'Google ML Kit'} • Zero Cloud Costs
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.detectionCard}>
               <Text style={styles.detectionLabel}>Detected Number:</Text>
               <View style={styles.detectedNumberContainer}>
                 <Text style={styles.detectedNumber}>{detectedNumber || 'None'}</Text>
               </View>
+              {!detectedNumber && (
+                <Text style={styles.detectionHint}>
+                  No number detected automatically. Please enter manually below.
+                </Text>
+              )}
             </View>
 
             <View style={styles.inputCard}>
@@ -337,6 +381,44 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 16,
     color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  ocrBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 255, 127, 0.1)',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    gap: 8,
+    marginTop: 10,
+  },
+  ocrBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  ocrInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 255, 127, 0.1)',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    gap: 12,
+  },
+  ocrInfoTextContainer: {
+    flex: 1,
+  },
+  ocrInfoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.success,
+    marginBottom: 4,
+  },
+  ocrInfoSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   detectionCard: {
     backgroundColor: colors.card,
@@ -361,6 +443,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.success,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  detectionHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   inputCard: {
     backgroundColor: colors.card,
