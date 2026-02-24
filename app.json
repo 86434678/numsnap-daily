@@ -1,42 +1,42 @@
+
 {
   "expo": {
     "name": "NumSnap Daily",
     "slug": "numsnap-daily",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/app-icon-jte.png",  // Keep or update to final icon
+    "icon": "./assets/images/app-icon-jte.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",  // Prefer a dedicated splash image
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6A1B9A"  // Match your purple theme instead of black
+      "backgroundColor": "#6A1B9A"
     },
     "ios": {
-  "supportsTablet": false,
-  "bundleIdentifier": "com.kodyfoote.numsnapdaily",
-  "buildNumber": "1",  // <-- Add this line
-  "infoPlist": { ... }
-},
-    "ITSAppUsesNonExemptEncryption": false,
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kodyfoote.numsnapdaily",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
         "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
         "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
       }
     },
-   "android": {
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/images/app-icon-jte.png",
-    "backgroundColor": "#6A1B9A"
-  },
-  "package": "com.kodyfoote.numsnapdaily",
-  "versionCode": 1,  // <-- Add this line
-  "permissions": [
-    "CAMERA",
-    "ACCESS_FINE_LOCATION",
-    "ACCESS_COARSE_LOCATION"
-  ]
-},
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-jte.png",
+        "backgroundColor": "#6A1B9A"
+      },
+      "package": "com.kodyfoote.numsnapdaily",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
     "plugins": [
       "expo-font",
       "expo-router",
