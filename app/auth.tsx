@@ -46,11 +46,13 @@ export default function AuthScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   const handleEmailAuth = async () => {
+    console.log("=== AUTH ATTEMPT START ===");
     console.log("User tapped authentication button", { mode, email });
     
     if (!email || !password) {
@@ -60,52 +62,79 @@ export default function AuthScreen() {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setErrorMessage("Please enter a valid email address");
+      console.log("Invalid email format:", email);
+      return;
+    }
+
+    // Password length check
+    if (mode === "signup" && password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long");
+      console.log("Password too short");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage("");
-    console.log("Starting authentication...", { mode, email });
+    console.log("Starting authentication...", { mode, email, passwordLength: password.length });
     
     try {
       if (mode === "signin") {
         console.log("Attempting sign in with email:", email);
         await signInWithEmail(email, password);
-        console.log("Sign in successful, navigating to home");
+        console.log("✅ Sign in successful, navigating to home");
         router.replace("/");
       } else {
         console.log("Attempting sign up with email:", email);
         await signUpWithEmail(email, password, name);
-        console.log("Sign up successful");
-        showAlert(
-          "Success",
-          "Account created! Please check your email to verify your account."
-        );
+        console.log("✅ Sign up successful, navigating to home");
         router.replace("/");
       }
     } catch (error: any) {
-      console.error("Authentication error:", error);
+      console.error("❌ Authentication error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        response: error.response,
+        stack: error.stack,
+      });
       
       // Parse error message to show user-friendly text
+      // AuthContext already maps errors to friendly messages, so use them directly
       let displayError = "Authentication failed. Please try again.";
       
       if (error.message) {
         const errorMsg = error.message.toLowerCase();
         
-        if (errorMsg.includes("invalid") || errorMsg.includes("credentials") || errorMsg.includes("401")) {
+        if (errorMsg.includes("invalid email or password") || errorMsg.includes("invalid") || errorMsg.includes("credentials") || errorMsg.includes("401")) {
           displayError = "Invalid email or password. Please check your credentials and try again.";
-        } else if (errorMsg.includes("email") && errorMsg.includes("exists")) {
+        } else if (errorMsg.includes("no account") || errorMsg.includes("user not found") || errorMsg.includes("not found")) {
+          displayError = "No account found with this email. Please sign up first.";
+        } else if (errorMsg.includes("already exists") || errorMsg.includes("email") && errorMsg.includes("exists")) {
           displayError = "An account with this email already exists. Please sign in instead.";
-        } else if (errorMsg.includes("password") && errorMsg.includes("weak")) {
-          displayError = "Password is too weak. Please use a stronger password.";
-        } else if (errorMsg.includes("network") || errorMsg.includes("fetch")) {
-          displayError = "Network error. Please check your connection and try again.";
+        } else if (errorMsg.includes("password") && (errorMsg.includes("weak") || errorMsg.includes("short"))) {
+          displayError = "Password is too weak. Please use a stronger password (at least 8 characters).";
+        } else if (errorMsg.includes("verify") || errorMsg.includes("verification") || errorMsg.includes("verified")) {
+          displayError = "Please verify your email address before signing in.";
+        } else if (errorMsg.includes("network") || errorMsg.includes("fetch") || errorMsg.includes("connection")) {
+          displayError = "Network error. Please check your internet connection and try again.";
         } else if (errorMsg.includes("422")) {
           displayError = "Invalid input. Please check your email and password format.";
+        } else if (errorMsg.includes("timeout")) {
+          displayError = "Request timed out. Please try again.";
         } else {
+          // Use the error message directly since AuthContext already made it user-friendly
           displayError = error.message;
         }
       }
       
       setErrorMessage(displayError);
-      console.log("Displaying error to user:", displayError);
+      console.log("[Auth] Displaying error to user:", displayError);
+      console.log("=== AUTH ATTEMPT END (FAILED) ===");
     } finally {
       setLoading(false);
     }
@@ -178,6 +207,12 @@ export default function AuthScreen() {
             {mode === "signin" ? "Sign In" : "Sign Up"}
           </Text>
 
+          <Text style={styles.subtitle}>
+            {mode === "signin" 
+              ? "Welcome back! Sign in to continue." 
+              : "Create your account to get started."}
+          </Text>
+
           {mode === "signup" && (
             <TextInput
               style={styles.input}
@@ -196,7 +231,7 @@ export default function AuthScreen() {
             placeholder="Email"
             value={email}
             onChangeText={(text) => {
-              setEmail(text);
+              setEmail(text.trim());
               clearError();
             }}
             keyboardType="email-address"
@@ -302,6 +337,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
+  },
   scrollContent: {
     flexGrow: 1,
   },
@@ -313,9 +353,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 32,
+    marginBottom: 8,
     textAlign: "center",
     color: "#000",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 32,
   },
   input: {
     height: 50,

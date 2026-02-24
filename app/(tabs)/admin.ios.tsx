@@ -312,6 +312,7 @@ export default function AdminScreen() {
   useFocusEffect(
     useCallback(() => {
       checkAdminAccess();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
 
