@@ -13,10 +13,12 @@
       "backgroundColor": "#6A1B9A"  // Match your purple theme instead of black
     },
     "ios": {
-      "supportsTablet": false,  // If not tablet-optimized
-      "bundleIdentifier": "com.kodyfoote.numsnapdaily",  // Change to your domain/email
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
+  "supportsTablet": false,
+  "bundleIdentifier": "com.kodyfoote.numsnapdaily",
+  "buildNumber": "1",  // <-- Add this line
+  "infoPlist": { ... }
+},
+    "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
         "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
         "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries are from the continental United States and prevent fraud."
