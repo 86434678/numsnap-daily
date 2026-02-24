@@ -28,6 +28,7 @@ export default function HomeScreen() {
   const [showHintModal, setShowHintModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
   const [checkingAge, setCheckingAge] = useState(true);
+  const [hasCheckedAge, setHasCheckedAge] = useState(false);
 
   console.log('HomeScreen: User authenticated:', !!user);
 
@@ -104,18 +105,21 @@ export default function HomeScreen() {
       const data = await authenticatedGet<{ ageVerified: boolean }>('/api/user/age-status');
       console.log('[API] Age verification status:', data);
       setAgeVerified(data.ageVerified);
+      setHasCheckedAge(true);
       
-      if (!data.ageVerified) {
+      // Only redirect if not verified and we haven't checked before
+      if (!data.ageVerified && !hasCheckedAge) {
         console.log('HomeScreen: User not age verified - redirecting to age verification');
         router.push('/age-verification');
       }
     } catch (error) {
       console.error('HomeScreen: Error checking age verification:', error);
       setAgeVerified(false);
+      setHasCheckedAge(true);
     } finally {
       setCheckingAge(false);
     }
-  }, [router]);
+  }, [router, hasCheckedAge]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -124,22 +128,24 @@ export default function HomeScreen() {
   }, [authLoading, user]);
 
   useEffect(() => {
-    if (user) {
-      console.log('HomeScreen: Checking age verification and fetching data');
+    if (user && !hasCheckedAge) {
+      console.log('HomeScreen: Initial load - checking age verification and fetching data');
       checkAgeVerification();
       fetchDailyNumber();
       fetchUserStats();
     }
-  }, [user, checkAgeVerification, fetchDailyNumber, fetchUserStats]);
+  }, [user, hasCheckedAge, checkAgeVerification, fetchDailyNumber, fetchUserStats]);
 
   // Re-check age verification when screen comes back into focus (e.g. after age-verification screen)
   useFocusEffect(
     useCallback(() => {
-      if (user) {
+      if (user && hasCheckedAge) {
         console.log('HomeScreen: Screen focused - re-checking age verification');
         checkAgeVerification();
+        fetchDailyNumber();
+        fetchUserStats();
       }
-    }, [user, checkAgeVerification])
+    }, [user, hasCheckedAge, checkAgeVerification, fetchDailyNumber, fetchUserStats])
   );
 
   useEffect(() => {
@@ -243,7 +249,7 @@ export default function HomeScreen() {
     return <Redirect href="/auth" />;
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loading || checkingAge) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
