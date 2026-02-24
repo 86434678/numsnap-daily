@@ -662,4 +662,73 @@ describe("API Integration Tests", () => {
       }
     });
   });
+
+  describe("Debug Endpoints", () => {
+    test("Get auth check with valid token", async () => {
+      const res = await authenticatedApi("/api/debug/auth-check", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(typeof data.authenticated).toBe("boolean");
+      expect(data.userId).toBeDefined();
+      expect(data.userEmail).toBeDefined();
+      expect(typeof data.isAdmin).toBe("boolean");
+    });
+
+    test("Get auth check without auth returns 401", async () => {
+      const res = await api("/api/debug/auth-check");
+      await expectStatus(res, 401);
+    });
+
+    test("Get user list", async () => {
+      const res = await api("/api/debug/user-list");
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(Array.isArray(data)).toBe(true);
+      if (data.length > 0) {
+        expect(data[0].id).toBeDefined();
+        expect(data[0].email).toBeDefined();
+        expect(data[0].name).toBeDefined();
+        expect(typeof data[0].isAdmin).toBe("boolean");
+        expect(typeof data[0].ageVerified).toBe("boolean");
+        expect(typeof data[0].emailVerified).toBe("boolean");
+      }
+    });
+
+    test("Set user as admin with valid email", async () => {
+      const { user } = await signUpTestUser();
+      const res = await api("/api/debug/set-admin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+        }),
+      });
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.userId).toBeDefined();
+      expect(data.email).toBe(user.email);
+      expect(data.isAdmin).toBe(true);
+    });
+
+    test("Set admin without email returns 400", async () => {
+      const res = await api("/api/debug/set-admin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Set admin with non-existent email returns 404", async () => {
+      const res = await api("/api/debug/set-admin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "nonexistent@example.com",
+        }),
+      });
+      await expectStatus(res, 404);
+    });
+  });
 });
