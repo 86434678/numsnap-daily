@@ -1,16 +1,30 @@
 {
+  "cli": {
+    "version": ">= 5.9.3"  // Optional: pins EAS CLI version for consistency
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_ENV": "development"  // Optional: helps debug environment
+      }
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_ENV": "preview"
+      },
+      "channel": "preview"  // Optional: enables EAS Update channels later
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"  // Optional: for future OTA updates
     }
+  },
+  "submit": {
+    "production": {}  // Optional placeholder for eas submit config later
   }
 }
