@@ -26,6 +26,16 @@ export default function RulesScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Sponsor</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor: NumSnap Daily LLC, [INSERT FULL LEGAL MAILING ADDRESS]
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Contact: support@[INSERTDOMAIN].com
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>How to Play</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               1. Each day at midnight PST (Pacific Standard Time), a new random 6-digit target number (0-999999) is generated and kept hidden.
@@ -47,6 +57,13 @@ export default function RulesScreen() {
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               5. If no one matches the number that day, there is no winner and no payout.
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Odds of Winning</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Odds of winning depend on the number of eligible entries received for that daily challenge.
             </Text>
           </View>
 
@@ -92,6 +109,9 @@ export default function RulesScreen() {
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Number Reveal System</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               The daily target number is hidden until after you submit your entry. This ensures fair play and prevents cheating.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • The daily target number is generated prior to the start of each entry period using a randomization process and cannot be altered once generated.
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               • Winners see the full number immediately with a celebration screen
@@ -161,7 +181,10 @@ export default function RulesScreen() {
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Prize Information</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Daily prize: $25 USD
+              • The total daily prize pool is $25 USD.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • If more than one verified participant matches the target number, the $25 prize will be divided equally among all winners.
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               • Winners will be notified in-app and via email within 24 hours
@@ -197,6 +220,19 @@ export default function RulesScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Verification & Disqualification</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor reserves the right to verify identity, eligibility, and compliance before awarding any prize.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor may disqualify any participant suspected of fraud, tampering, automation, abuse, or rule violations.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Failure to provide requested verification may result in forfeiture.
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Anti-Fraud Measures</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               We use GPS verification, photo metadata analysis, AI detection, geographic restrictions, and partial number reveals to prevent fraud. Any suspicious activity may result in disqualification and account termination.
@@ -204,9 +240,45 @@ export default function RulesScreen() {
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Limitation of Liability</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor is not responsible for lost, late, incomplete, invalid, or misdirected entries.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor is not responsible for technical failures, system errors, downtime, GPS inaccuracies, AI misreads, interrupted connections, or unauthorized interference.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor is not responsible for delays involving payment processors or third-party services.
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Right to Modify or Terminate</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Sponsor reserves the right to cancel, suspend, or modify the Promotion if fraud, technical failures, or other issues impair integrity or proper functioning.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Updates will be reflected in revised Official Rules within the app.
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Privacy & Data</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              Your photos and location data are used solely for entry verification and fraud prevention. We do not sell or share your personal information with third parties.
+              • We do not sell your personal information.
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • Information may be shared with trusted service providers solely to operate the Promotion (payment processing, fraud prevention, hosting, analytics).
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • All data is handled in accordance with our Privacy Policy at [INSERT LINK].
+            </Text>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Governing Law</Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              • This Promotion is governed by the laws of the State of [INSERT STATE], without regard to conflict of law principles.
             </Text>
           </View>
 
