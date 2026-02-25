@@ -2,7 +2,7 @@
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "NumSnap-Daily",
+    "slug": "numsnap-daily",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.numsnapdaily",
+      "bundleIdentifier": "com.kodyfoote.numsnapdaily",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
@@ -29,7 +30,8 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.numsnapdaily",
+      "package": "com.kodyfoote.numsnapdaily",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -60,13 +62,16 @@
         }
       ]
     ],
-    "scheme": "NumSnap-Daily",
+    "scheme": "numsnapdaily",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev"
+      "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
+      "eas": {
+        "projectId": "your-project-id"
+      }
     }
   }
 }
