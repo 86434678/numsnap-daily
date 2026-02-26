@@ -1,11 +1,11 @@
 import "react-native-reanimated";
 import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useColorScheme, View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import { useColorScheme, View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from "react-native";
 import { useNetworkState } from "expo-network";
 import {
   DarkTheme,
@@ -15,7 +15,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 // Note: Error logging is auto-initialized via index.ts import
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -24,6 +24,59 @@ SplashScreen.preventAutoHideAsync();
 export const unstable_settings = {
   initialRouteName: "(tabs)", // Ensure any route can link back to `/`
 };
+
+/**
+ * Auth Bootstrap Guard — implements the "Auth Bootstrap" rule.
+ * Shows a loading splash while checking session, then redirects appropriately.
+ * This prevents redirect loops on app reload.
+ */
+function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return; // Still checking session — wait
+
+    const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+
+    if (!user && !inAuthGroup) {
+      // Not authenticated and not on auth screen — redirect to auth
+      console.log("[AuthBootstrap] No user session, redirecting to /auth");
+      router.replace("/auth");
+    } else if (user && inAuthGroup) {
+      // Authenticated but on auth screen — redirect to home
+      console.log("[AuthBootstrap] User authenticated, redirecting to home");
+      router.replace("/(tabs)/(home)/");
+    }
+  }, [user, loading, segments]);
+
+  if (loading) {
+    return (
+      <View style={bootstrapStyles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={bootstrapStyles.loadingText}>Loading NumSnap Daily...</Text>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+const bootstrapStyles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000000",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "500",
+  },
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -107,39 +160,41 @@ export default function RootLayout() {
                   </View>
                 </View>
               </Modal>
-              <Stack>
-                {/* Auth screens */}
-                <Stack.Screen name="auth" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                
-                {/* Main app with tabs */}
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                
-                {/* Camera screen (no tabs - would block controls) */}
-                <Stack.Screen name="camera" options={{ headerShown: true, title: "Snap a Number", presentation: "modal" }} />
-                
-                {/* Confirmation screen */}
-                <Stack.Screen name="confirm-submission" options={{ headerShown: true, title: "Confirm Entry", presentation: "modal" }} />
-                
-                {/* Winners screen */}
-                <Stack.Screen name="winners" options={{ headerShown: true, title: "Recent Winners" }} />
-                
-                {/* Rules screen */}
-                <Stack.Screen name="rules" options={{ headerShown: true, title: "Official Rules" }} />
-                
-                {/* Reveal result screen */}
-                <Stack.Screen name="reveal-result" options={{ headerShown: false, presentation: "modal" }} />
-                
-                {/* Age verification screen */}
-                <Stack.Screen name="age-verification" options={{ headerShown: false, presentation: "modal" }} />
-                
-                {/* Prize claim screen */}
-                <Stack.Screen name="claim-prize" options={{ headerShown: true, title: "Claim Your Prize", presentation: "modal" }} />
-                
-                {/* 404 */}
-                <Stack.Screen name="+not-found" options={{ title: "Oops!" }} />
-              </Stack>
+              <AuthBootstrapGuard>
+                <Stack>
+                  {/* Auth screens */}
+                  <Stack.Screen name="auth" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+                  
+                  {/* Main app with tabs */}
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  
+                  {/* Camera screen (no tabs - would block controls) */}
+                  <Stack.Screen name="camera" options={{ headerShown: true, title: "Snap a Number", presentation: "modal" }} />
+                  
+                  {/* Confirmation screen */}
+                  <Stack.Screen name="confirm-submission" options={{ headerShown: true, title: "Confirm Entry", presentation: "modal" }} />
+                  
+                  {/* Winners screen */}
+                  <Stack.Screen name="winners" options={{ headerShown: true, title: "Recent Winners" }} />
+                  
+                  {/* Rules screen */}
+                  <Stack.Screen name="rules" options={{ headerShown: true, title: "Official Rules" }} />
+                  
+                  {/* Reveal result screen */}
+                  <Stack.Screen name="reveal-result" options={{ headerShown: false, presentation: "modal" }} />
+                  
+                  {/* Age verification screen */}
+                  <Stack.Screen name="age-verification" options={{ headerShown: false, presentation: "modal" }} />
+                  
+                  {/* Prize claim screen */}
+                  <Stack.Screen name="claim-prize" options={{ headerShown: true, title: "Claim Your Prize", presentation: "modal" }} />
+                  
+                  {/* 404 */}
+                  <Stack.Screen name="+not-found" options={{ title: "Oops!" }} />
+                </Stack>
+              </AuthBootstrapGuard>
               <SystemBars style={"auto"} />
               </GestureHandlerRootView>
             </WidgetProvider>

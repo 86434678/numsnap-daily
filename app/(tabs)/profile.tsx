@@ -210,15 +210,12 @@ export default function ProfileScreen() {
   };
 
   const confirmSignOut = async () => {
-    console.log('ProfileScreen: User confirmed sign out');
+    console.log('[ProfileScreen] User confirmed sign out');
     setShowSignOutModal(false);
-    try {
-      await signOut();
-      console.log('ProfileScreen: User signed out successfully');
-      router.replace('/auth');
-    } catch (error) {
-      console.error('ProfileScreen: Error signing out:', error);
-    }
+    // signOut clears local state immediately in finally block
+    // AuthBootstrapGuard will detect user=null and redirect to /auth automatically
+    await signOut();
+    console.log('[ProfileScreen] User signed out - AuthBootstrapGuard will redirect to /auth');
   };
 
   const cancelSignOut = () => {

@@ -58,17 +58,28 @@ export default function AuthScreen() {
     try {
       if (mode === "signin") {
         await signInWithEmail(email, password);
-        router.replace("/");
+        // AuthBootstrapGuard will handle redirect once user state updates
       } else {
-        await signUpWithEmail(email, password, name);
+        const result = await signUpWithEmail(email, password, name || undefined);
+        // Do NOT auto-login after signup — user must verify email first
         showAlert(
-          "Success",
-          "Account created! Please check your email to verify your account."
+          "Account Created!",
+          result.message || "Account created! Please check your email to verify your account before signing in."
         );
-        router.replace("/");
+        // Switch to sign-in mode so user can login after verifying email
+        setMode("signin");
+        setPassword("");
       }
     } catch (error: any) {
-      showAlert("Error", error.message || "Authentication failed");
+      const message = error?.message || "Authentication failed";
+      // Provide friendly error messages
+      if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("credentials")) {
+        showAlert("Sign In Failed", "Invalid email or password. Please try again.");
+      } else if (message.toLowerCase().includes("already") || message.toLowerCase().includes("exists")) {
+        showAlert("Account Exists", "An account with this email already exists. Please sign in instead.");
+      } else {
+        showAlert("Error", message);
+      }
     } finally {
       setLoading(false);
     }

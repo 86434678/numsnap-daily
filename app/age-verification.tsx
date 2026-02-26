@@ -5,38 +5,52 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
-import { authenticatedPatch } from '@/utils/api';
 import { useTheme } from '@react-navigation/native';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AgeVerificationScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
+  const { verifyAge, refreshAgeStatus } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showUnderageModal, setShowUnderageModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleVerifyAge = async (isOver18: boolean) => {
-    console.log('User age verification:', isOver18 ? '18+' : 'Under 18');
+    console.log('[AgeVerification] User age verification:', isOver18 ? '18+' : 'Under 18');
 
     if (!isOver18) {
-      console.log('User is under 18 - showing underage modal');
+      console.log('[AgeVerification] User is under 18 - showing underage modal');
       setShowUnderageModal(true);
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Calling PATCH /api/user/verify-age with ageVerified: true');
-      const response = await authenticatedPatch('/api/user/verify-age', { ageVerified: true });
-      console.log('Age verification response:', response);
-
-      if (response.success) {
-        console.log('Age verified successfully - navigating back');
-        router.back();
-      }
+      // Use the AuthContext verifyAge which calls POST /api/verify-age with age=18
+      // and updates the ageVerified state in context
+      console.log('[AgeVerification] Calling verifyAge(18) via AuthContext...');
+      await verifyAge(18);
+      console.log('[AgeVerification] Age verified successfully - refreshing status and navigating back');
+      await refreshAgeStatus();
+      router.back();
     } catch (error) {
-      console.error('Age verification error:', error);
+      console.error('[AgeVerification] Age verification error:', error);
+      // Try the PATCH endpoint as fallback
+      try {
+        console.log('[AgeVerification] Trying PATCH /api/user/verify-age as fallback...');
+        const { authenticatedPatch } = await import('@/utils/api');
+        const response = await authenticatedPatch('/api/user/verify-age', { ageVerified: true });
+        console.log('[AgeVerification] PATCH response:', response);
+        if (response.success) {
+          await refreshAgeStatus();
+          router.back();
+          return;
+        }
+      } catch (patchError) {
+        console.error('[AgeVerification] PATCH fallback also failed:', patchError);
+      }
       const errorMsg = error instanceof Error ? error.message : 'Failed to verify age. Please try again.';
       setErrorMessage(errorMsg);
       setShowErrorModal(true);

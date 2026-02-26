@@ -17,7 +17,7 @@ const MAX_HINTS_PER_DAY = 2;
 export default function HomeScreen() {
   const { colors: themeColors } = useTheme();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, ageVerified: contextAgeVerified, refreshAgeStatus } = useAuth();
   
   const [timeUntilReset, setTimeUntilReset] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -98,24 +98,35 @@ export default function HomeScreen() {
   }, []);
 
   const checkAgeVerification = useCallback(async () => {
-    console.log('[API] Checking age verification status...');
+    console.log('[HomeScreen] Checking age verification status...');
     setCheckingAge(true);
     try {
+      // First use the context value (already fetched from /api/me on login)
+      if (contextAgeVerified !== undefined) {
+        setAgeVerified(contextAgeVerified);
+        if (!contextAgeVerified) {
+          console.log('[HomeScreen] User not age verified (from context) - redirecting to age verification');
+          router.push('/age-verification');
+        }
+        setCheckingAge(false);
+        return;
+      }
+      // Fallback: fetch from API
       const data = await authenticatedGet<{ ageVerified: boolean }>('/api/user/age-status');
       console.log('[API] Age verification status:', data);
       setAgeVerified(data.ageVerified);
       
       if (!data.ageVerified) {
-        console.log('HomeScreen: User not age verified - redirecting to age verification');
+        console.log('[HomeScreen] User not age verified - redirecting to age verification');
         router.push('/age-verification');
       }
     } catch (error) {
-      console.error('HomeScreen: Error checking age verification:', error);
+      console.error('[HomeScreen] Error checking age verification:', error);
       setAgeVerified(false);
     } finally {
       setCheckingAge(false);
     }
-  }, [router]);
+  }, [router, contextAgeVerified]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -136,10 +147,15 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user) {
-        console.log('HomeScreen: Screen focused - re-checking age verification');
-        checkAgeVerification();
+        console.log('[HomeScreen] Screen focused - re-checking age verification');
+        // Sync local state with context
+        setAgeVerified(contextAgeVerified);
+        if (contextAgeVerified === false) {
+          console.log('[HomeScreen] User not age verified (focus check) - redirecting');
+          router.push('/age-verification');
+        }
       }
-    }, [user, checkAgeVerification])
+    }, [user, contextAgeVerified, router])
   );
 
   useEffect(() => {
