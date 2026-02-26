@@ -25,7 +25,6 @@ export default function SignupScreen() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
     visible: false,
     title: "",
@@ -38,6 +37,10 @@ export default function SignupScreen() {
 
   const hideAlert = () => {
     setAlertModal({ visible: false, title: "", message: "" });
+    // After showing success message, redirect to login
+    if (alertModal.title.includes("Success")) {
+      router.replace("/(auth)/login");
+    }
   };
 
   const handleSignup = async () => {
@@ -46,37 +49,29 @@ export default function SignupScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
     setLoading(true);
     setError("");
-    setSuccessMessage("");
     try {
-      const result = await signUpWithEmail(email, password, name || undefined);
-      console.log("[Signup] Sign up successful:", result);
+      console.log("[Signup] Attempting sign up...");
+      const result = await signUpWithEmail(email, password, name);
       
-      // Show success message - user must verify email before logging in
-      const message = result.message || "Account created! Please check your email to verify your account before signing in.";
-      setSuccessMessage(message);
-      
-      // Clear form
-      setEmail("");
-      setPassword("");
-      setName("");
-      
-      // Show alert with instructions
-      showAlert(
-        "Check Your Email! 📧",
-        "We've sent a verification link to your email. Please click the link to verify your account, then come back and log in."
-      );
+      if (result.success) {
+        console.log("[Signup] Sign up successful, showing verification message");
+        showAlert(
+          "Success! 📧",
+          "Account created successfully! Please check your email to verify your account before logging in."
+        );
+      }
     } catch (err: any) {
       console.error("[Signup] Error:", err);
       const message = err?.message || "Sign up failed";
       
-      if (message.toLowerCase().includes("already") || message.toLowerCase().includes("exists")) {
+      if (message.toLowerCase().includes("already exists") || message.toLowerCase().includes("duplicate")) {
         setError("An account with this email already exists. Please log in instead.");
       } else {
         setError(message);
@@ -90,14 +85,14 @@ export default function SignupScreen() {
     setLoading(true);
     setError("");
     try {
+      console.log(`[Signup] Attempting ${provider} sign in...`);
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
         await signInWithApple();
       }
-      
-      // Social auth auto-creates account if needed, then redirects
-      router.replace("/(auth)/age-verification");
+      console.log(`[Signup] ${provider} sign in successful, AuthContext will handle redirect`);
+      // AuthBootstrapGuard in _layout.tsx will handle the redirect
     } catch (err: any) {
       console.error("[Signup] Social auth error:", err);
       setError(err.message || "Authentication failed");
@@ -126,14 +121,8 @@ export default function SignupScreen() {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{alertModal.title}</Text>
               <Text style={styles.modalMessage}>{alertModal.message}</Text>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => {
-                  hideAlert();
-                  router.replace("/(auth)/login");
-                }}
-              >
-                <Text style={styles.modalButtonText}>Go to Login</Text>
+              <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
+                <Text style={styles.modalButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -146,7 +135,6 @@ export default function SignupScreen() {
             <Text style={styles.subtitle}>Create your account</Text>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
             <TextInput
               style={styles.input}
@@ -158,6 +146,7 @@ export default function SignupScreen() {
                 setError("");
               }}
               autoCapitalize="words"
+              autoCorrect={false}
             />
 
             <TextInput
@@ -168,7 +157,6 @@ export default function SignupScreen() {
               onChangeText={(text) => {
                 setEmail(text);
                 setError("");
-                setSuccessMessage("");
               }}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -177,13 +165,12 @@ export default function SignupScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Password (min 6 characters)"
+              placeholder="Password (min 8 characters)"
               placeholderTextColor="#999"
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
                 setError("");
-                setSuccessMessage("");
               }}
               secureTextEntry
               autoCapitalize="none"
@@ -278,15 +265,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#FEE2E2",
     backgroundColor: "#991B1B",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  successText: {
-    color: "#D1FAE5",
-    backgroundColor: "#065F46",
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,

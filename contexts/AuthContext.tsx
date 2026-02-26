@@ -1,8 +1,10 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
-import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
-import { apiGet, apiPost, authenticatedGet, authenticatedPost } from "@/utils/api";
+import * as SecureStore from "expo-secure-store";
+import { authClient, setBearerToken, clearAuthTokens, BEARER_TOKEN_KEY } from "@/lib/auth";
+import { authenticatedGet, authenticatedPost } from "@/utils/api";
 
 interface User {
   id: string;
@@ -29,6 +31,9 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const USER_DATA_KEY = "numsnap_user_data";
+const AGE_VERIFIED_KEY = "numsnap_age_verified";
 
 function openOAuthPopup(provider: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -73,13 +78,84 @@ function openOAuthPopup(provider: string): Promise<string> {
   });
 }
 
+// Helper to persist user data to SecureStore
+async function persistUserData(user: User | null) {
+  try {
+    if (Platform.OS === "web") {
+      if (user) {
+        localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(USER_DATA_KEY);
+      }
+    } else {
+      if (user) {
+        await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(user));
+      } else {
+        await SecureStore.deleteItemAsync(USER_DATA_KEY);
+      }
+    }
+  } catch (error) {
+    console.error("[AuthContext] Failed to persist user data:", error);
+  }
+}
+
+// Helper to persist age verified status
+async function persistAgeVerified(verified: boolean) {
+  try {
+    if (Platform.OS === "web") {
+      localStorage.setItem(AGE_VERIFIED_KEY, verified ? "true" : "false");
+    } else {
+      await SecureStore.setItemAsync(AGE_VERIFIED_KEY, verified ? "true" : "false");
+    }
+  } catch (error) {
+    console.error("[AuthContext] Failed to persist age verified:", error);
+  }
+}
+
+// Helper to load persisted user data
+async function loadPersistedUserData(): Promise<User | null> {
+  try {
+    let userData: string | null = null;
+    if (Platform.OS === "web") {
+      userData = localStorage.getItem(USER_DATA_KEY);
+    } else {
+      userData = await SecureStore.getItemAsync(USER_DATA_KEY);
+    }
+    
+    if (userData) {
+      return JSON.parse(userData);
+    }
+  } catch (error) {
+    console.error("[AuthContext] Failed to load persisted user data:", error);
+  }
+  return null;
+}
+
+// Helper to load persisted age verified status
+async function loadPersistedAgeVerified(): Promise<boolean> {
+  try {
+    let ageVerified: string | null = null;
+    if (Platform.OS === "web") {
+      ageVerified = localStorage.getItem(AGE_VERIFIED_KEY);
+    } else {
+      ageVerified = await SecureStore.getItemAsync(AGE_VERIFIED_KEY);
+    }
+    
+    return ageVerified === "true";
+  } catch (error) {
+    console.error("[AuthContext] Failed to load persisted age verified:", error);
+  }
+  return false;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [ageVerified, setAgeVerified] = useState(false);
 
+  // Initialize auth state on mount
   useEffect(() => {
-    fetchUser();
+    initializeAuth();
 
     // Listen for deep links (e.g. from social auth redirects)
     const subscription = Linking.addEventListener("url", (event) => {
@@ -87,23 +163,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fetchUser();
     });
 
-    // POLLING: Refresh session every 5 minutes to keep SecureStore token in sync
-    const intervalId = setInterval(() => {
-      console.log("[AuthContext] Auto-refreshing user session to sync token...");
-      fetchUser();
-    }, 5 * 60 * 1000);
-
     return () => {
       subscription.remove();
-      clearInterval(intervalId);
     };
   }, []);
 
-  const fetchUser = async () => {
+  const initializeAuth = async () => {
     try {
       setLoading(true);
+      console.log("[AuthContext] Initializing auth state...");
+      
+      // First, load persisted data for immediate UI update
+      const persistedUser = await loadPersistedUserData();
+      const persistedAgeVerified = await loadPersistedAgeVerified();
+      
+      if (persistedUser) {
+        console.log("[AuthContext] Loaded persisted user:", persistedUser.email);
+        setUser(persistedUser);
+        setAgeVerified(persistedAgeVerified);
+      }
+      
+      // Then verify with backend
+      await fetchUser();
+    } catch (error) {
+      console.error("[AuthContext] Failed to initialize auth:", error);
+      setUser(null);
+      setAgeVerified(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUser = async () => {
+    try {
       console.log("[AuthContext] Fetching session...");
       const session = await authClient.getSession();
+      
       if (session?.data?.user) {
         // Sync token to SecureStore for utils/api.ts
         if (session.data.session?.token) {
@@ -115,31 +210,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("[AuthContext] Fetching /api/me for full profile...");
           const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean }>("/api/me");
           console.log("[AuthContext] /api/me response:", profile);
+          
           const fullUser: User = {
             id: profile.id,
             email: profile.email,
             name: profile.name,
             ageVerified: profile.ageVerified,
           };
+          
           setUser(fullUser);
           setAgeVerified(profile.ageVerified ?? false);
-        } catch (profileError) {
-          console.warn("[AuthContext] Could not fetch /api/me, using session user:", profileError);
-          setUser(session.data.user as User);
-          setAgeVerified(false);
+          
+          // Persist to storage
+          await persistUserData(fullUser);
+          await persistAgeVerified(profile.ageVerified ?? false);
+        } catch (profileError: any) {
+          console.warn("[AuthContext] Could not fetch /api/me:", profileError);
+          
+          // If token is invalid (401/403), clear everything
+          if (profileError?.message?.includes("401") || profileError?.message?.includes("403")) {
+            console.log("[AuthContext] Token invalid, clearing auth state");
+            setUser(null);
+            setAgeVerified(false);
+            await clearAuthTokens();
+            await persistUserData(null);
+            await persistAgeVerified(false);
+          } else {
+            // Use session user as fallback
+            const fallbackUser: User = {
+              id: session.data.user.id,
+              email: session.data.user.email,
+              name: session.data.user.name,
+              ageVerified: false,
+            };
+            setUser(fallbackUser);
+            setAgeVerified(false);
+            await persistUserData(fallbackUser);
+            await persistAgeVerified(false);
+          }
         }
       } else {
         console.log("[AuthContext] No active session found");
         setUser(null);
         setAgeVerified(false);
         await clearAuthTokens();
+        await persistUserData(null);
+        await persistAgeVerified(false);
       }
     } catch (error) {
       console.error("[AuthContext] Failed to fetch user:", error);
       setUser(null);
       setAgeVerified(false);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -148,9 +269,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Refreshing age verification status from /api/user/age-status...");
       const data = await authenticatedGet<{ ageVerified: boolean }>("/api/user/age-status");
       console.log("[AuthContext] Age status:", data);
+      
       setAgeVerified(data.ageVerified ?? false);
+      await persistAgeVerified(data.ageVerified ?? false);
+      
       if (user) {
-        setUser({ ...user, ageVerified: data.ageVerified });
+        const updatedUser = { ...user, ageVerified: data.ageVerified };
+        setUser(updatedUser);
+        await persistUserData(updatedUser);
       }
     } catch (error) {
       console.error("[AuthContext] Failed to refresh age status:", error);
@@ -200,10 +326,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Verifying age:", age);
       const result = await authenticatedPost<{ success: boolean; ageVerified: boolean }>("/api/verify-age", { age });
       console.log("[AuthContext] Age verification result:", result);
+      
       if (result.success && result.ageVerified) {
         setAgeVerified(true);
+        await persistAgeVerified(true);
+        
         if (user) {
-          setUser({ ...user, ageVerified: true });
+          const updatedUser = { ...user, ageVerified: true };
+          setUser(updatedUser);
+          await persistUserData(updatedUser);
         }
       } else {
         throw new Error("Age verification failed");
@@ -239,11 +370,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGitHub = () => signInWithSocial("github");
 
   const signOut = async () => {
-    // Clear local state immediately (don't wait for server)
-    setUser(null);
-    setAgeVerified(false);
-    await clearAuthTokens();
     try {
+      // Clear local state immediately (don't wait for server)
+      setUser(null);
+      setAgeVerified(false);
+      await clearAuthTokens();
+      await persistUserData(null);
+      await persistAgeVerified(false);
+      
+      // Try to sign out from server
       await authClient.signOut();
       console.log("[AuthContext] Signed out successfully");
     } catch (error) {

@@ -60,17 +60,18 @@ export default function AgeVerificationScreen() {
     setLoading(true);
     setError("");
     try {
+      console.log("[AgeVerification] Verifying age...");
       await verifyAge(age);
-      console.log("[AgeVerification] Age verified successfully");
+      console.log("[AgeVerification] Age verified successfully, AuthContext will handle redirect");
       
       showAlert(
         "Welcome! 🎉",
         "Your age has been verified. You can now start playing NumSnap Daily!"
       );
       
-      // Redirect to home after a moment
+      // AuthBootstrapGuard will handle redirect after context updates
       setTimeout(() => {
-        router.replace("/(tabs)/(home)/");
+        hideAlert();
       }, 2000);
     } catch (err: any) {
       console.error("[AgeVerification] Error:", err);
