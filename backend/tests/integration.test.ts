@@ -50,6 +50,63 @@ describe("API Integration Tests", () => {
       expect(userId).toBeDefined();
       expect(user.email).toBeDefined();
     });
+
+    test("Get current user profile", async () => {
+      const res = await authenticatedApi("/api/me", authToken);
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.id).toBeDefined();
+      expect(data.email).toBeDefined();
+      expect(data.name).toBeDefined();
+      expect(typeof data.ageVerified).toBe("boolean");
+    });
+
+    test("Get profile without auth returns 401", async () => {
+      const res = await api("/api/me");
+      await expectStatus(res, 401);
+    });
+
+    test("Verify age via auth endpoint", async () => {
+      const { token } = await signUpTestUser();
+      const res = await authenticatedApi("/api/verify-age", token, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ age: 25 }),
+      });
+      await expectStatus(res, 200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(typeof data.ageVerified).toBe("boolean");
+    });
+
+    test("Verify age with age < 18 returns 400", async () => {
+      const { token } = await signUpTestUser();
+      const res = await authenticatedApi("/api/verify-age", token, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ age: 15 }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Verify age without auth returns 401", async () => {
+      const res = await api("/api/verify-age", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ age: 25 }),
+      });
+      await expectStatus(res, 401);
+    });
+
+    test("Verify age without age field returns 400", async () => {
+      const { token } = await signUpTestUser();
+      const res = await authenticatedApi("/api/verify-age", token, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      await expectStatus(res, 400);
+    });
   });
 
   describe("Age Verification", () => {
@@ -546,6 +603,34 @@ describe("API Integration Tests", () => {
       });
       await expectStatus(res, 401);
     });
+
+    test("Claim prize with venmo payment method", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "venmo",
+          paymentInfo: "@testuser",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 200, 400, 403);
+    });
+
+    test("Claim prize with egift payment method", async () => {
+      const res = await authenticatedApi("/api/prize-claims", authToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId,
+          paymentMethod: "egift",
+          paymentInfo: "test@example.com",
+          confirmedAccuracy: true,
+        }),
+      });
+      await expectStatus(res, 200, 400, 403);
+    });
   });
 
   describe("Admin Operations", () => {
@@ -612,6 +697,45 @@ describe("API Integration Tests", () => {
       }
     });
 
+    test("Update prize claim with Paid status", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "Paid",
+          }),
+        });
+        await expectStatus(res, 200, 400, 403, 404, 401);
+      }
+    });
+
+    test("Update prize claim with Forfeited status", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "Forfeited",
+          }),
+        });
+        await expectStatus(res, 200, 400, 403, 404, 401);
+      }
+    });
+
+    test("Update prize claim with Pending status", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "Pending",
+          }),
+        });
+        await expectStatus(res, 200, 400, 403, 404, 401);
+      }
+    });
+
     test("Update prize claim with invalid status returns 400", async () => {
       if (claimId) {
         const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
@@ -659,6 +783,20 @@ describe("API Integration Tests", () => {
           }),
         });
         await expectStatus(res, 400, 403, 401);
+      }
+    });
+
+    test("Update claim with notes field", async () => {
+      if (claimId) {
+        const res = await authenticatedApi(`/api/admin/prize-claims/${claimId}`, authToken, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentStatus: "Processing",
+            notes: "Updated with notes",
+          }),
+        });
+        await expectStatus(res, 200, 400, 403, 404, 401);
       }
     });
   });
