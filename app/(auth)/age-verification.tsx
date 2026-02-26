@@ -19,7 +19,11 @@ export default function AgeVerificationScreen() {
   const router = useRouter();
   const { verifyAge, user } = useAuth();
 
-  const [birthDate, setBirthDate] = useState(new Date(2000, 0, 1));
+  // Default to 18 years ago
+  const eighteenYearsAgo = new Date();
+  eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
+  const [birthDate, setBirthDate] = useState(eighteenYearsAgo);
   const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,27 +56,28 @@ export default function AgeVerificationScreen() {
   const handleVerifyAge = async () => {
     const age = calculateAge(birthDate);
     
-    if (age < 13) {
-      setError("You must be at least 13 years old to use NumSnap Daily.");
+    if (age < 18) {
+      setError("You must be 18 or older to use NumSnap Daily.");
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      console.log("[AgeVerification] Verifying age...");
-      await verifyAge(age);
-      console.log("[AgeVerification] Age verified successfully, AuthContext will handle redirect");
+      console.log("[AgeVerification] Verifying age with birthdate:", birthDate, "age:", age);
+      await verifyAge(birthDate);
+      console.log("[AgeVerification] Age verified successfully");
       
       showAlert(
         "Welcome! 🎉",
         "Your age has been verified. You can now start playing NumSnap Daily!"
       );
       
-      // AuthBootstrapGuard will handle redirect after context updates
+      // Redirect to home after a short delay - AuthBootstrapGuard will also handle this
       setTimeout(() => {
         hideAlert();
-      }, 2000);
+        router.replace("/(tabs)/(home)/");
+      }, 1500);
     } catch (err: any) {
       console.error("[AgeVerification] Error:", err);
       setError(err.message || "Age verification failed. Please try again.");
@@ -94,6 +99,13 @@ export default function AgeVerificationScreen() {
 
   const ageDisplay = calculateAge(birthDate);
   const dateDisplay = birthDate.toLocaleDateString();
+
+  // Date limits
+  const today = new Date();
+  const maxDate = new Date();
+  maxDate.setFullYear(today.getFullYear() - 18); // Must be at least 18
+  const minDate = new Date();
+  minDate.setFullYear(today.getFullYear() - 100); // Max 100 years old
 
   return (
     <LinearGradient
@@ -150,8 +162,8 @@ export default function AgeVerificationScreen() {
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDateChange}
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
+                maximumDate={maxDate}
+                minimumDate={minDate}
                 style={styles.datePicker}
               />
             )}
@@ -161,17 +173,17 @@ export default function AgeVerificationScreen() {
               <Text style={styles.ageValue}>{ageDisplay} years old</Text>
             </View>
 
-            {ageDisplay < 13 && (
+            {ageDisplay < 18 && (
               <Text style={styles.warningText}>
-                You must be at least 13 years old to use this app.
+                You must be at least 18 years old to use this app.
               </Text>
             )}
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, (loading || ageDisplay < 13) && styles.buttonDisabled]}
+            style={[styles.primaryButton, (loading || ageDisplay < 18) && styles.buttonDisabled]}
             onPress={handleVerifyAge}
-            disabled={loading || ageDisplay < 13}
+            disabled={loading || ageDisplay < 18}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -181,7 +193,7 @@ export default function AgeVerificationScreen() {
           </TouchableOpacity>
 
           <Text style={styles.privacyNote}>
-            Your birth date is used only for age verification and is stored securely.
+            🔒 Your birth date is used only for age verification and is stored securely. We respect your privacy.
           </Text>
         </View>
       </ScrollView>

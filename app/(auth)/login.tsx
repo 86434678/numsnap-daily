@@ -18,12 +18,13 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signInWithEmail, signInWithGoogle, signInWithApple, ageVerified } = useAuth();
+  const { signInWithEmail, signInWithGoogle, signInWithApple, resendVerificationEmail } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showResendButton, setShowResendButton] = useState(false);
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
     visible: false,
     title: "",
@@ -38,38 +39,61 @@ export default function LoginScreen() {
     setAlertModal({ visible: false, title: "", message: "" });
   };
 
+  const handleResendVerification = async () => {
+    if (!email) {
+      showAlert("Error", "Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await resendVerificationEmail(email);
+      showAlert("Success", result.message || "Verification email sent! Check your inbox and spam folder.");
+    } catch (err: any) {
+      showAlert("Error", err.message || "Failed to resend verification email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       setError("Please enter email and password");
+      setShowResendButton(false);
       return;
     }
 
     setLoading(true);
     setError("");
+    setShowResendButton(false);
     try {
       await signInWithEmail(email, password);
-      console.log("[Login] Sign in successful, checking age verification...");
-      
-      // Wait a moment for auth context to update
-      setTimeout(() => {
-        if (!ageVerified) {
-          console.log("[Login] Age not verified, redirecting to age verification");
-          router.replace("/(auth)/age-verification");
-        } else {
-          console.log("[Login] Age verified, redirecting to home");
-          router.replace("/(tabs)/(home)/");
-        }
-      }, 500);
+      console.log("[Login] Sign in successful, AuthBootstrapGuard will handle redirect");
+      // AuthBootstrapGuard in _layout.tsx will handle the redirect based on ageVerified status
     } catch (err: any) {
       console.error("[Login] Error:", err);
       const message = err?.message || "Login failed";
       
-      if (message.toLowerCase().includes("verify") || message.toLowerCase().includes("email")) {
-        setError("Please verify your email first. Check your inbox for the verification link.");
-      } else if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("credentials")) {
+      // Check for email verification errors
+      if (
+        message.toLowerCase().includes("verify") ||
+        message.toLowerCase().includes("verified") ||
+        message.toLowerCase().includes("email not verified") ||
+        message.toLowerCase().includes("check spam")
+      ) {
+        setError("Please verify your email first (check spam/junk folder)");
+        setShowResendButton(true);
+      } else if (
+        message.toLowerCase().includes("invalid") ||
+        message.toLowerCase().includes("credentials") ||
+        message.toLowerCase().includes("password") ||
+        message.toLowerCase().includes("not found")
+      ) {
         setError("Invalid email or password. Please try again.");
+        setShowResendButton(false);
       } else {
         setError(message);
+        setShowResendButton(false);
       }
     } finally {
       setLoading(false);
@@ -79,21 +103,15 @@ export default function LoginScreen() {
   const handleSocialAuth = async (provider: "google" | "apple") => {
     setLoading(true);
     setError("");
+    setShowResendButton(false);
     try {
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
         await signInWithApple();
       }
-      
-      // Wait for auth context to update
-      setTimeout(() => {
-        if (!ageVerified) {
-          router.replace("/(auth)/age-verification");
-        } else {
-          router.replace("/(tabs)/(home)/");
-        }
-      }, 500);
+      // AuthBootstrapGuard in _layout.tsx will handle the redirect based on auth state
+      console.log("[Login] Social auth successful, AuthBootstrapGuard will handle redirect");
     } catch (err: any) {
       console.error("[Login] Social auth error:", err);
       setError(err.message || "Authentication failed");
@@ -135,7 +153,20 @@ export default function LoginScreen() {
             <Text style={styles.title}>NumSnap Daily</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                {showResendButton && (
+                  <TouchableOpacity
+                    style={styles.resendButton}
+                    onPress={handleResendVerification}
+                    disabled={loading}
+                  >
+                    <Text style={styles.resendButtonText}>Resend Verification Email</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
 
             <TextInput
               style={styles.input}
@@ -145,6 +176,7 @@ export default function LoginScreen() {
               onChangeText={(text) => {
                 setEmail(text);
                 setError("");
+                setShowResendButton(false);
               }}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -159,6 +191,7 @@ export default function LoginScreen() {
               onChangeText={(text) => {
                 setPassword(text);
                 setError("");
+                setShowResendButton(false);
               }}
               secureTextEntry
               autoCapitalize="none"
@@ -250,14 +283,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#E0E7FF",
   },
+  errorContainer: {
+    marginBottom: 16,
+  },
   errorText: {
     color: "#FEE2E2",
     backgroundColor: "#991B1B",
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
     fontSize: 14,
     textAlign: "center",
+  },
+  resendButton: {
+    marginTop: 8,
+    backgroundColor: "#3B82F6",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  resendButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   input: {
     height: 50,

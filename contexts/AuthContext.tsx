@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 import { authClient, setBearerToken, clearAuthTokens, BEARER_TOKEN_KEY } from "@/lib/auth";
-import { authenticatedGet, authenticatedPost } from "@/utils/api";
+import { authenticatedGet, authenticatedPost, apiPost, apiGet } from "@/utils/api";
 
 interface User {
   id: string;
@@ -12,6 +12,7 @@ interface User {
   name?: string;
   image?: string;
   ageVerified?: boolean;
+  verified?: boolean;
 }
 
 interface AuthContextType {
@@ -25,9 +26,11 @@ interface AuthContextType {
   signInWithApple: () => Promise<void>;
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
-  verifyAge: (age: number) => Promise<void>;
+  verifyAge: (birthDateOrAge: Date | number) => Promise<void>;
   fetchUser: () => Promise<void>;
   refreshAgeStatus: () => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean; message: string }>;
+  handleDeepLinkVerification: (token: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -157,10 +160,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     initializeAuth();
 
-    // Listen for deep links (e.g. from social auth redirects)
-    const subscription = Linking.addEventListener("url", (event) => {
-      console.log("[AuthContext] Deep link received, refreshing user session");
-      fetchUser();
+    // Listen for deep links (e.g. from email verification)
+    const subscription = Linking.addEventListener("url", async (event) => {
+      console.log("[AuthContext] Deep link received:", event.url);
+      
+      // Parse the URL to check if it's a verification link
+      const url = Linking.parse(event.url);
+      if (url.path === "verify" && url.queryParams?.token) {
+        console.log("[AuthContext] Email verification deep link detected");
+        await handleDeepLinkVerification(url.queryParams.token as string);
+      } else {
+        // For other deep links (social auth), refresh user session
+        console.log("[AuthContext] Other deep link, refreshing user session");
+        fetchUser();
+      }
     });
 
     return () => {
@@ -208,7 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fetch full user profile from /api/me to get ageVerified status
         try {
           console.log("[AuthContext] Fetching /api/me for full profile...");
-          const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean }>("/api/me");
+          const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean }>("/api/me");
           console.log("[AuthContext] /api/me response:", profile);
           
           const fullUser: User = {
@@ -216,14 +229,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: profile.email,
             name: profile.name,
             ageVerified: profile.ageVerified,
+            // Support both emailVerified (API docs) and verified (legacy) field names
+            verified: profile.emailVerified ?? profile.verified ?? false,
           };
           
+          const isAgeVerified = profile.ageVerified ?? false;
           setUser(fullUser);
-          setAgeVerified(profile.ageVerified ?? false);
+          setAgeVerified(isAgeVerified);
           
           // Persist to storage
           await persistUserData(fullUser);
-          await persistAgeVerified(profile.ageVerified ?? false);
+          await persistAgeVerified(isAgeVerified);
         } catch (profileError: any) {
           console.warn("[AuthContext] Could not fetch /api/me:", profileError);
           
@@ -242,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: session.data.user.email,
               name: session.data.user.name,
               ageVerified: false,
+              verified: false,
             };
             setUser(fallbackUser);
             setAgeVerified(false);
@@ -288,19 +305,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthContext] Signing in with email...");
       const result = await authClient.signIn.email({ email, password });
       if (result?.error) {
-        throw new Error(result.error.message || "Sign in failed");
+        const errMsg = result.error.message || "Sign in failed";
+        console.error("[AuthContext] Sign in error from Better Auth:", errMsg, result.error);
+        // Better Auth returns specific error codes for unverified email
+        if (
+          result.error.code === "EMAIL_NOT_VERIFIED" ||
+          errMsg.toLowerCase().includes("verify") ||
+          errMsg.toLowerCase().includes("verified") ||
+          result.error.status === 403
+        ) {
+          throw new Error("Please verify your email first (check spam/junk folder)");
+        }
+        throw new Error(errMsg);
       }
-      await fetchUser();
-    } catch (error) {
+      
+      // Sync token if available
+      if (result?.data?.session?.token) {
+        await setBearerToken(result.data.session.token);
+      }
+      
+      // Fetch user profile to check email verification status
+      console.log("[AuthContext] Login successful, checking email verification status...");
+      try {
+        const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean }>("/api/me");
+        console.log("[AuthContext] Profile after login:", profile);
+        
+        const isEmailVerified = profile.emailVerified ?? profile.verified ?? true;
+        
+        if (!isEmailVerified) {
+          // Email not verified - sign out and throw error
+          console.log("[AuthContext] Email not verified - signing out");
+          await authClient.signOut();
+          await clearAuthTokens();
+          throw new Error("Please verify your email first (check spam/junk folder)");
+        }
+        
+        // Email is verified - set user state
+        const fullUser: User = {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          ageVerified: profile.ageVerified,
+          verified: isEmailVerified,
+        };
+        
+        setUser(fullUser);
+        setAgeVerified(profile.ageVerified ?? false);
+        await persistUserData(fullUser);
+        await persistAgeVerified(profile.ageVerified ?? false);
+      } catch (profileError: any) {
+        if (profileError?.message?.includes("verify") || profileError?.message?.includes("verified")) {
+          throw profileError;
+        }
+        // If we can't fetch profile, fall back to fetchUser
+        console.warn("[AuthContext] Could not fetch profile after login, using fetchUser:", profileError);
+        await fetchUser();
+      }
+    } catch (error: any) {
       console.error("[AuthContext] Email sign in failed:", error);
-      throw error;
+      // Re-throw with clean message
+      if (error?.message) {
+        throw error;
+      }
+      throw new Error("Sign in failed. Please try again.");
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, name?: string): Promise<{ success: boolean; message: string }> => {
     try {
       console.log("[AuthContext] Signing up with email (no auto-login)...");
-      // Use Better Auth signup - does NOT auto-login per spec
+      // Use Better Auth signup
       const result = await authClient.signUp.email({
         email,
         password,
@@ -309,21 +383,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result?.error) {
         throw new Error(result.error.message || "Sign up failed");
       }
-      // Do NOT call fetchUser - user must verify email first
-      console.log("[AuthContext] Sign up successful, awaiting email verification");
+      
+      // Better Auth may auto-login after signup - sign out immediately so user must verify email first
+      console.log("[AuthContext] Sign up successful - signing out to enforce email verification");
+      try {
+        await authClient.signOut();
+      } catch (signOutError) {
+        console.warn("[AuthContext] Could not sign out after signup (may not have been logged in):", signOutError);
+      }
+      
+      // Clear any tokens that may have been set
+      await clearAuthTokens();
+      await persistUserData(null);
+      await persistAgeVerified(false);
+      setUser(null);
+      setAgeVerified(false);
+      
+      console.log("[AuthContext] Sign up complete, awaiting email verification");
       return {
         success: true,
-        message: "Account created. Please check your email to verify.",
+        message: "Check your email for verification link (check spam/junk folder if not in inbox).",
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("[AuthContext] Email sign up failed:", error);
       throw error;
     }
   };
 
-  const verifyAge = async (age: number) => {
+  const verifyAge = async (birthDateOrAge: Date | number) => {
     try {
-      console.log("[AuthContext] Verifying age:", age);
+      let age: number;
+      
+      if (typeof birthDateOrAge === "number") {
+        // Direct age number passed (e.g., from legacy age-verification screen)
+        age = birthDateOrAge;
+        console.log("[AuthContext] Verifying age (direct number):", age);
+      } else {
+        // Calculate age from birthdate
+        const today = new Date();
+        age = today.getFullYear() - birthDateOrAge.getFullYear();
+        const monthDiff = today.getMonth() - birthDateOrAge.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateOrAge.getDate())) {
+          age--;
+        }
+        console.log("[AuthContext] Verifying age (from birthdate):", age);
+      }
+      
+      if (age < 18) {
+        throw new Error("You must be 18 or older to use NumSnap Daily.");
+      }
+      
       const result = await authenticatedPost<{ success: boolean; ageVerified: boolean }>("/api/verify-age", { age });
       console.log("[AuthContext] Age verification result:", result);
       
@@ -337,11 +447,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await persistUserData(updatedUser);
         }
       } else {
-        throw new Error("Age verification failed");
+        throw new Error("Age verification failed. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[AuthContext] Age verification failed:", error);
       throw error;
+    }
+  };
+
+  const resendVerificationEmail = async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log("[AuthContext] Resending verification email to:", email);
+      // Use the /api/resend-verification endpoint as per API docs
+      const result = await apiPost<{ success: boolean; message: string }>("/api/resend-verification", { email });
+      console.log("[AuthContext] Resend verification result:", result);
+      return result;
+    } catch (error: any) {
+      console.error("[AuthContext] Resend verification failed:", error);
+      // Try Better Auth's built-in endpoint as fallback
+      try {
+        console.log("[AuthContext] Trying Better Auth resend verification endpoint...");
+        await authClient.sendVerificationEmail({ email, callbackURL: "/" });
+        return { success: true, message: "Verification email sent! Check your inbox and spam folder." };
+      } catch (fallbackError: any) {
+        console.error("[AuthContext] Better Auth resend also failed:", fallbackError);
+        throw new Error(error?.message || "Failed to resend verification email");
+      }
+    }
+  };
+
+  const handleDeepLinkVerification = async (token: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log("[AuthContext] Verifying email with token:", token);
+      // Use the /api/verify endpoint as per API docs
+      const result = await apiGet<{ success: boolean; message: string }>(`/api/verify?token=${token}`);
+      console.log("[AuthContext] Email verification result:", result);
+      return result;
+    } catch (error: any) {
+      console.error("[AuthContext] Email verification via /api/verify failed:", error);
+      // Try Better Auth's built-in verify endpoint as fallback
+      try {
+        console.log("[AuthContext] Trying Better Auth verify-email endpoint...");
+        const baResult = await apiGet<{ success: boolean; message: string }>(`/api/auth/verify-email?token=${token}`);
+        console.log("[AuthContext] Better Auth verify-email result:", baResult);
+        return { success: true, message: "Email verified! Please log in." };
+      } catch (fallbackError: any) {
+        console.error("[AuthContext] Better Auth verify-email also failed:", fallbackError);
+        throw new Error(error?.message || "Email verification failed");
+      }
     }
   };
 
@@ -402,6 +555,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyAge,
         fetchUser,
         refreshAgeStatus,
+        resendVerificationEmail,
+        handleDeepLinkVerification,
       }}
     >
       {children}

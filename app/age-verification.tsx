@@ -32,25 +32,12 @@ export default function AgeVerificationScreen() {
       // and updates the ageVerified state in context
       console.log('[AgeVerification] Calling verifyAge(18) via AuthContext...');
       await verifyAge(18);
-      console.log('[AgeVerification] Age verified successfully - refreshing status and navigating back');
+      console.log('[AgeVerification] Age verified successfully - refreshing status and navigating to home');
       await refreshAgeStatus();
-      router.back();
+      // Navigate to home after successful age verification
+      router.replace('/(tabs)/(home)/');
     } catch (error) {
       console.error('[AgeVerification] Age verification error:', error);
-      // Try the PATCH endpoint as fallback
-      try {
-        console.log('[AgeVerification] Trying PATCH /api/user/verify-age as fallback...');
-        const { authenticatedPatch } = await import('@/utils/api');
-        const response = await authenticatedPatch('/api/user/verify-age', { ageVerified: true });
-        console.log('[AgeVerification] PATCH response:', response);
-        if (response.success) {
-          await refreshAgeStatus();
-          router.back();
-          return;
-        }
-      } catch (patchError) {
-        console.error('[AgeVerification] PATCH fallback also failed:', patchError);
-      }
       const errorMsg = error instanceof Error ? error.message : 'Failed to verify age. Please try again.';
       setErrorMessage(errorMsg);
       setShowErrorModal(true);

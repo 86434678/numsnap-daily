@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "NumSnap Daily",
+    "slug": "NumSnap-Daily",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
@@ -37,6 +37,22 @@
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "numsnapdaily",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -61,7 +77,7 @@
         }
       ]
     ],
-    "scheme": "NumSnap Daily",
+    "scheme": "numsnapdaily",
     "experiments": {
       "typedRoutes": true
     },

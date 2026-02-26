@@ -18,13 +18,14 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signUpWithEmail, signInWithGoogle, signInWithApple } = useAuth();
+  const { signUpWithEmail, signInWithGoogle, signInWithApple, resendVerificationEmail } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
     visible: false,
     title: "",
@@ -43,6 +44,23 @@ export default function SignupScreen() {
     }
   };
 
+  const handleResendVerification = async () => {
+    if (!email) {
+      showAlert("Error", "Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await resendVerificationEmail(email);
+      showAlert("Success", result.message || "Verification email sent! Check your inbox and spam folder.");
+    } catch (err: any) {
+      showAlert("Error", err.message || "Failed to resend verification email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignup = async () => {
     if (!email || !password) {
       setError("Please enter email and password");
@@ -56,16 +74,15 @@ export default function SignupScreen() {
 
     setLoading(true);
     setError("");
+    setShowSuccessMessage(false);
     try {
       console.log("[Signup] Attempting sign up...");
       const result = await signUpWithEmail(email, password, name);
       
       if (result.success) {
         console.log("[Signup] Sign up successful, showing verification message");
-        showAlert(
-          "Success! 📧",
-          "Account created successfully! Please check your email to verify your account before logging in."
-        );
+        setShowSuccessMessage(true);
+        setError("");
       }
     } catch (err: any) {
       console.error("[Signup] Error:", err);
@@ -84,6 +101,7 @@ export default function SignupScreen() {
   const handleSocialAuth = async (provider: "google" | "apple") => {
     setLoading(true);
     setError("");
+    setShowSuccessMessage(false);
     try {
       console.log(`[Signup] Attempting ${provider} sign in...`);
       if (provider === "google") {
@@ -134,93 +152,117 @@ export default function SignupScreen() {
             <Text style={styles.title}>NumSnap Daily</Text>
             <Text style={styles.subtitle}>Create your account</Text>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Name (optional)"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                setError("");
-              }}
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError("");
-              }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Password (min 8 characters)"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError("");
-              }}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleSignup}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Sign Up</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.loginLink}
-              onPress={() => router.push("/(auth)/login")}
-            >
-              <Text style={styles.loginLinkText}>
-                Already have an account? <Text style={styles.loginLinkBold}>Log In</Text>
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialAuth("google")}
-              disabled={loading}
-            >
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-            {Platform.OS === "ios" && (
-              <TouchableOpacity
-                style={[styles.socialButton, styles.appleButton]}
-                onPress={() => handleSocialAuth("apple")}
-                disabled={loading}
-              >
-                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                  Continue with Apple
+            {showSuccessMessage ? (
+              <View style={styles.successContainer}>
+                <Text style={styles.successTitle}>✅ Account Created!</Text>
+                <Text style={styles.successText}>
+                  Check your email for verification link (check spam/junk folder if not in inbox).
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.resendButton}
+                  onPress={handleResendVerification}
+                  disabled={loading}
+                >
+                  <Text style={styles.resendButtonText}>Resend Verification Email</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.loginButton}
+                  onPress={() => router.replace("/(auth)/login")}
+                >
+                  <Text style={styles.loginButtonText}>Go to Login</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Name (optional)"
+                  placeholderTextColor="#999"
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    setError("");
+                  }}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#999"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setError("");
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password (min 8 characters)"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError("");
+                  }}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                  onPress={handleSignup}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Sign Up</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.loginLink}
+                  onPress={() => router.push("/(auth)/login")}
+                >
+                  <Text style={styles.loginLinkText}>
+                    Already have an account? <Text style={styles.loginLinkBold}>Log In</Text>
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or continue with</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={() => handleSocialAuth("google")}
+                  disabled={loading}
+                >
+                  <Text style={styles.socialButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={[styles.socialButton, styles.appleButton]}
+                    onPress={() => handleSocialAuth("apple")}
+                    disabled={loading}
+                  >
+                    <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                      Continue with Apple
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </ScrollView>
@@ -261,6 +303,49 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: "center",
     color: "#E0E7FF",
+  },
+  successContainer: {
+    backgroundColor: "rgba(16, 185, 129, 0.2)",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#D1FAE5",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  successText: {
+    fontSize: 15,
+    color: "#E0E7FF",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  resendButton: {
+    backgroundColor: "#3B82F6",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  resendButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  loginButton: {
+    backgroundColor: "#10B981",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   errorText: {
     color: "#FEE2E2",

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as Linking from "expo-linking";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme, View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator } from "react-native";
@@ -32,22 +33,63 @@ export const unstable_settings = {
  * This prevents redirect loops on app reload.
  */
 function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading, ageVerified } = useAuth();
+  const { user, loading, ageVerified, handleDeepLinkVerification } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const [verificationModal, setVerificationModal] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  // Handle initial deep link on app launch
+  useEffect(() => {
+    const handleInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        console.log("[AuthBootstrap] Initial URL:", initialUrl);
+        const parsed = Linking.parse(initialUrl);
+        if (parsed.path === "verify" && parsed.queryParams?.token) {
+          console.log("[AuthBootstrap] Email verification link detected on launch");
+          try {
+            const result = await handleDeepLinkVerification(parsed.queryParams.token as string);
+            setVerificationModal({
+              visible: true,
+              title: "Email Verified! ✅",
+              message: result.message || "Your email has been verified. Please log in to continue.",
+            });
+          } catch (error: any) {
+            setVerificationModal({
+              visible: true,
+              title: "Verification Failed",
+              message: error.message || "Failed to verify email. Please try again.",
+            });
+          }
+        }
+      }
+    };
+
+    handleInitialURL();
+  }, []);
+
+  const hideVerificationModal = () => {
+    setVerificationModal({ visible: false, title: "", message: "" });
+    // Redirect to login after verification
+    router.replace("/(auth)/login");
+  };
 
   useEffect(() => {
     if (loading) return; // Still checking session — wait
 
-    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback" || segments[0] === "verify";
 
     console.log("[AuthBootstrap] Segments:", segments, "User:", !!user, "AgeVerified:", ageVerified, "InAuthGroup:", inAuthGroup);
 
     if (!user && !inAuthGroup) {
-      // Not authenticated and not on auth screen — redirect to login
+      // Not authenticated and not on auth/verify screen — redirect to login
       console.log("[AuthBootstrap] No user session, redirecting to /(auth)/login");
       router.replace("/(auth)/login");
-    } else if (user && !ageVerified && segments[0] !== "(auth)") {
+    } else if (user && !ageVerified && segments[0] !== "(auth)" && segments[0] !== "verify") {
       // Authenticated but age not verified — redirect to age verification
       console.log("[AuthBootstrap] User authenticated but age not verified, redirecting to /(auth)/age-verification");
       router.replace("/(auth)/age-verification");
@@ -67,7 +109,28 @@ function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {/* Email Verification Modal */}
+      <Modal
+        visible={verificationModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={hideVerificationModal}
+      >
+        <View style={bootstrapStyles.modalOverlay}>
+          <View style={bootstrapStyles.modalContent}>
+            <Text style={bootstrapStyles.modalTitle}>{verificationModal.title}</Text>
+            <Text style={bootstrapStyles.modalMessage}>{verificationModal.message}</Text>
+            <TouchableOpacity style={bootstrapStyles.modalButton} onPress={hideVerificationModal}>
+              <Text style={bootstrapStyles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {children}
+    </>
+  );
 }
 
 const bootstrapStyles = StyleSheet.create({
@@ -82,6 +145,44 @@ const bootstrapStyles = StyleSheet.create({
     fontSize: 16,
     color: "#FFFFFF",
     fontWeight: "500",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  modalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
@@ -169,10 +270,11 @@ export default function RootLayout() {
               </Modal>
               <AuthBootstrapGuard>
                 <Stack>
-                  {/* Auth screens group */}
-                  <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)/signup" options={{ headerShown: false }} />
-                  <Stack.Screen name="(auth)/age-verification" options={{ headerShown: false, presentation: "modal" }} />
+                  {/* Auth screens group - register the group, not individual screens */}
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  
+                  {/* Email verification screen */}
+                  <Stack.Screen name="verify" options={{ headerShown: false }} />
                   
                   {/* Legacy auth screens (keep for backward compatibility) */}
                   <Stack.Screen name="auth" options={{ headerShown: false }} />
