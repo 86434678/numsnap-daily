@@ -1,3 +1,4 @@
+
 import "react-native-reanimated";
 import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
@@ -31,25 +32,31 @@ export const unstable_settings = {
  * This prevents redirect loops on app reload.
  */
 function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, ageVerified } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
     if (loading) return; // Still checking session — wait
 
-    const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+
+    console.log("[AuthBootstrap] Segments:", segments, "User:", !!user, "AgeVerified:", ageVerified, "InAuthGroup:", inAuthGroup);
 
     if (!user && !inAuthGroup) {
-      // Not authenticated and not on auth screen — redirect to auth
-      console.log("[AuthBootstrap] No user session, redirecting to /auth");
-      router.replace("/auth");
-    } else if (user && inAuthGroup) {
-      // Authenticated but on auth screen — redirect to home
-      console.log("[AuthBootstrap] User authenticated, redirecting to home");
+      // Not authenticated and not on auth screen — redirect to login
+      console.log("[AuthBootstrap] No user session, redirecting to /(auth)/login");
+      router.replace("/(auth)/login");
+    } else if (user && !ageVerified && segments[0] !== "(auth)") {
+      // Authenticated but age not verified — redirect to age verification
+      console.log("[AuthBootstrap] User authenticated but age not verified, redirecting to /(auth)/age-verification");
+      router.replace("/(auth)/age-verification");
+    } else if (user && ageVerified && inAuthGroup) {
+      // Authenticated, age verified, but on auth screen — redirect to home
+      console.log("[AuthBootstrap] User authenticated and age verified, redirecting to home");
       router.replace("/(tabs)/(home)/");
     }
-  }, [user, loading, segments]);
+  }, [user, loading, ageVerified, segments]);
 
   if (loading) {
     return (
@@ -162,7 +169,12 @@ export default function RootLayout() {
               </Modal>
               <AuthBootstrapGuard>
                 <Stack>
-                  {/* Auth screens */}
+                  {/* Auth screens group */}
+                  <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)/signup" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)/age-verification" options={{ headerShown: false, presentation: "modal" }} />
+                  
+                  {/* Legacy auth screens (keep for backward compatibility) */}
                   <Stack.Screen name="auth" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
@@ -185,7 +197,7 @@ export default function RootLayout() {
                   {/* Reveal result screen */}
                   <Stack.Screen name="reveal-result" options={{ headerShown: false, presentation: "modal" }} />
                   
-                  {/* Age verification screen */}
+                  {/* Age verification screen (legacy location) */}
                   <Stack.Screen name="age-verification" options={{ headerShown: false, presentation: "modal" }} />
                   
                   {/* Prize claim screen */}
