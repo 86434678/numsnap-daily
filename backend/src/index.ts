@@ -26,11 +26,12 @@ app.withAuth({
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
+      const verifyUrl = `numsnapdaily://verify?token=${url.split('token=')[1]}`;
       resend.emails.send({
         from: 'NumSnap Daily <noreply@numsnap.com>',
         to: user.email,
         subject: 'Verify your email address',
-        html: `<p>Click the link to verify your email: <a href="${url}">${url}</a></p>`,
+        html: `<p>Click the link to verify your email: <a href="${verifyUrl}">${verifyUrl}</a></p><p><strong>Check your email for verification link (check spam/junk folder if not in inbox)</strong></p>`,
       });
     },
   },

@@ -109,6 +109,65 @@ describe("API Integration Tests", () => {
     });
   });
 
+  describe("Email Verification", () => {
+    test("Verify email with invalid token returns 400", async () => {
+      const res = await api("/api/verify?token=invalid-token");
+      await expectStatus(res, 400);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.message).toBeDefined();
+    });
+
+    test("Verify email without token parameter returns 400", async () => {
+      const res = await api("/api/verify");
+      await expectStatus(res, 400);
+    });
+
+    test("Resend verification with valid email", async () => {
+      const testEmail = `verify-test-${Date.now()}@example.com`;
+      const res = await api("/api/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: testEmail }),
+      });
+      // Returns 200 if email exists or 404 if not
+      await expectStatus(res, 200, 404);
+      const data = await res.json();
+      expect(data.success).toBeDefined();
+      expect(data.message).toBeDefined();
+    });
+
+    test("Resend verification without email returns 400", async () => {
+      const res = await api("/api/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Resend verification with invalid email format returns 400", async () => {
+      const res = await api("/api/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "not-an-email" }),
+      });
+      await expectStatus(res, 400);
+    });
+
+    test("Resend verification for non-existent user returns 404", async () => {
+      const res = await api("/api/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "nonexistent@example.com" }),
+      });
+      await expectStatus(res, 404);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.message).toBeDefined();
+    });
+  });
+
   describe("Age Verification", () => {
     test("Get age verification status", async () => {
       const res = await authenticatedApi("/api/user/age-status", authToken);

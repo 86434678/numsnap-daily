@@ -64,12 +64,13 @@ export interface TestUser {
  */
 export async function signUpTestUser(): Promise<TestUser> {
   const id = crypto.randomUUID();
+  const email = `testuser+${id}@example.com`;
   const res = await api("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "Test User",
-      email: `testuser+${id}@example.com`,
+      email,
       password: "TestPassword123!",
     }),
   });
@@ -79,14 +80,33 @@ export async function signUpTestUser(): Promise<TestUser> {
     throw new Error(`Failed to sign up test user (${res.status}): ${body}`);
   }
 
-  const data = (await res.json()) as TestUser;
+  const signupData = (await res.json()) as any;
+
+  // Extract token from signup response
+  let sessionToken = "";
+  if (signupData.session) {
+    if (typeof signupData.session === "string") {
+      sessionToken = signupData.session;
+    } else if (signupData.session.token) {
+      sessionToken = signupData.session.token;
+    }
+  }
+
+  if (!sessionToken) {
+    throw new Error(`Failed to extract session token from signup response`);
+  }
+
+  const testUser: TestUser = {
+    token: sessionToken,
+    user: signupData.user,
+  };
 
   // Auto-register cleanup so the test file doesn't need to
   afterAll(async () => {
-    await deleteTestUser(data.token);
+    await deleteTestUser(testUser.token);
   });
 
-  return data;
+  return testUser;
 }
 
 /**

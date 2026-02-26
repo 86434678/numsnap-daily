@@ -36,6 +36,13 @@
       "when": 1772068283248,
       "tag": "20260226011123_furry_gertrude_yorkes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772079249885,
+      "tag": "20260226041409_daffy_freak",
+      "breakpoints": true
     }
   ]
 }
