@@ -3,11 +3,11 @@
     "name": "NumSnap Daily",
     "slug": "NumSnap Daily",
     "version": "1.0.0",
-   "updates": {
-  "enabled": true,
-  "runtimeVersion": "1.0.0",
-  "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290"
-}
+    "updates": {
+      "enabled": true,
+      "runtimeVersion": "1.0.0",
+      "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
     "userInterfaceStyle": "automatic",
@@ -86,12 +86,12 @@
     "experiments": {
       "typedRoutes": true
     },
-"extra": {
-  "router": {},
-  "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
-  "eas": {
-    "projectId": "db461926-4668-4eed-921a-2a5806c7d290"
-  }
-}
+    "extra": {
+      "router": {},
+      "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
+      "eas": {
+        "projectId": "db461926-4668-4eed-921a-2a5806c7d290"
+      }
+    }
   }
 }
