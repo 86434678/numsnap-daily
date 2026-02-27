@@ -83,7 +83,7 @@ export function registerNumSnapRoutes(app: App) {
   // GET /api/reveal-result - Get the result of today's submission
   app.fastify.get('/api/reveal-result', {
     schema: {
-      description: 'Get the result of today\'s submission with reveal details',
+      description: 'Get the result of today\'s submission with reveal details and post-win information',
       tags: ['reveal'],
       response: {
         200: {
@@ -94,6 +94,17 @@ export function registerNumSnapRoutes(app: App) {
             targetNumber: { type: 'string' },
             submissionTime: { type: 'string', format: 'date-time' },
             userName: { type: 'string' },
+            submissionId: { type: 'string' },
+            photoUrl: { type: 'string' },
+            location: {
+              type: 'object',
+              properties: {
+                latitude: { type: 'number' },
+                longitude: { type: 'number' },
+                city: { type: 'string' },
+              },
+            },
+            isManualEntry: { type: 'boolean' },
           },
         },
         400: {
@@ -106,7 +117,7 @@ export function registerNumSnapRoutes(app: App) {
         },
       },
     },
-  }, async (request, reply): Promise<{ isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string } | void> => {
+  }, async (request, reply): Promise<{ isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string; submissionId: string; photoUrl: string; location: { latitude: number; longitude: number; city?: string }; isManualEntry: boolean } | void> => {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
@@ -150,6 +161,14 @@ export function registerNumSnapRoutes(app: App) {
         targetNumber: targetNumberStr,
         submissionTime: submission.createdAt.toISOString(),
         userName: `User${userId.slice(-3)}`,
+        submissionId: submission.id,
+        photoUrl: submission.photoUrl,
+        location: {
+          latitude: Number(submission.latitude),
+          longitude: Number(submission.longitude),
+          city: submission.city || undefined,
+        },
+        isManualEntry: submission.isManualEntry,
       };
 
       app.logger.info({ userId, isMatch }, 'Reveal result fetched');
@@ -299,10 +318,17 @@ export function registerNumSnapRoutes(app: App) {
       if (responseText !== 'none' && responseText !== 'no number' && responseText !== 'no numbers found') {
         const matches = responseText.match(/\d+/);
         if (matches) {
-          detectedNumber = parseInt(matches[0], 10);
-          if (detectedNumber > 999999) {
-            detectedNumber = null;
+          let extractedNum = parseInt(matches[0], 10);
+
+          // If more than 6 digits, take first 6 digits
+          if (extractedNum > 999999) {
+            const numStr = String(extractedNum);
+            // Take first 6 digits and pad left with 0 if needed
+            extractedNum = parseInt(numStr.substring(0, 6), 10);
           }
+
+          // Ensure it's exactly 6 digits by padding left with 0
+          detectedNumber = parseInt(String(extractedNum).padStart(6, '0'), 10);
         }
       }
 
@@ -328,6 +354,7 @@ export function registerNumSnapRoutes(app: App) {
           confirmedNumber: { type: 'number' },
           latitude: { type: 'number' },
           longitude: { type: 'number' },
+          isManualEntry: { type: 'boolean' },
         },
       },
       response: {
@@ -366,13 +393,13 @@ export function registerNumSnapRoutes(app: App) {
       },
     },
   }, async (
-    request: FastifyRequest<{ Body: { photoUrl: string; detectedNumber: number; confirmedNumber: number; latitude: number; longitude: number } }>,
+    request: FastifyRequest<{ Body: { photoUrl: string; detectedNumber: number; confirmedNumber: number; latitude: number; longitude: number; isManualEntry?: boolean } }>,
     reply: FastifyReply
   ): Promise<{ success: boolean; submission: { id: string; confirmedNumber: number; isWinner: boolean }; revealData: { isMatch: boolean; userNumber: number; targetNumber: string; submissionTime: string; userName: string } } | void> => {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
-    const { photoUrl, detectedNumber, confirmedNumber, latitude, longitude } = request.body;
+    const { photoUrl, detectedNumber, confirmedNumber, latitude, longitude, isManualEntry = false } = request.body;
     const userId = session.user.id;
     const todayPST = getTodayPST();
 
@@ -421,6 +448,7 @@ export function registerNumSnapRoutes(app: App) {
           confirmedNumber,
           latitude: latitude.toString(),
           longitude: longitude.toString(),
+          isManualEntry,
           submissionDate: todayPST,
           revealTimePST,
           isWinner: confirmedNumber === dailyNumber.targetNumber,

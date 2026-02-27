@@ -318,4 +318,115 @@ export function registerAdminRoutes(app: App) {
       throw error;
     }
   });
+
+  // POST /api/admin/preview - Admin preview tool for testing UI screens
+  app.fastify.post<{ Body: { option: string } }>('/api/admin/preview', {
+    schema: {
+      description: 'Admin-only endpoint to preview different UI screens (win screen, paywall, post-win details)',
+      tags: ['admin'],
+      body: {
+        type: 'object',
+        required: ['option'],
+        properties: {
+          option: {
+            type: 'string',
+            enum: ['win-screen', 'paywall', 'post-win-details'],
+            description: 'Which preview screen to show',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          description: 'Preview data based on selected option',
+        },
+        403: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+        401: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+  }, async (request: FastifyRequest<{ Body: { option: string } }>, reply: FastifyReply): Promise<any | void> => {
+    const session = await requireAuth(request, reply);
+    if (!session) return;
+
+    const userId = session.user.id;
+    const { option } = request.body;
+
+    app.logger.info({ userId, option }, 'Admin preview requested');
+
+    try {
+      const isAdmin = await checkIsAdmin(userId);
+      if (!isAdmin) {
+        app.logger.warn({ userId }, 'Non-admin user attempted admin preview');
+        return reply.status(403).send({ error: 'Admin access required' });
+      }
+
+      if (option === 'win-screen') {
+        return {
+          type: 'win-screen',
+          confetti: {
+            enabled: true,
+            duration: 3000,
+          },
+          prize: {
+            amount: 25,
+            currency: 'USD',
+            message: 'Congratulations! You won $25!',
+          },
+          claimButton: {
+            text: 'Claim Prize',
+            action: 'navigate-to-claim',
+          },
+        };
+      } else if (option === 'paywall') {
+        return {
+          type: 'paywall',
+          plans: [
+            {
+              id: 'monthly',
+              name: 'Monthly',
+              price: 4.99,
+              currency: 'USD',
+              billing: 'month',
+              features: ['Daily entries', 'Earn up to $25/day', 'Premium support'],
+            },
+            {
+              id: 'yearly',
+              name: 'Yearly',
+              price: 29.99,
+              currency: 'USD',
+              billing: 'year',
+              features: ['All monthly features', 'Save 38%', 'Priority support'],
+            },
+          ],
+        };
+      } else if (option === 'post-win-details') {
+        return {
+          type: 'post-win-details',
+          submission: {
+            photoUrl: 'https://example.com/photo.jpg',
+            detectedNumber: 123456,
+            confirmedNumber: 123456,
+            location: {
+              latitude: 34.0522,
+              longitude: -118.2437,
+              city: 'Los Angeles, CA',
+            },
+            notes: 'Manual entry provided',
+            submittedAt: new Date().toISOString(),
+          },
+        };
+      } else {
+        return reply.status(400).send({ error: 'Invalid preview option' });
+      }
+    } catch (error) {
+      app.logger.error({ err: error, userId, option }, 'Failed to generate preview');
+      throw error;
+    }
+  });
 }
