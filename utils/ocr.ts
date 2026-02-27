@@ -34,10 +34,20 @@ export async function performOCR(imageUri: string): Promise<OCRResult> {
     };
   }
   
-  // Platform-specific implementations will be loaded dynamically
-  // This is handled by React Native's platform-specific file resolution
-  // The actual implementation is in ocr.ios.ts and ocr.android.ts
+  // Dynamically import platform-specific implementation
+  try {
+    if (Platform.OS === 'ios') {
+      const { performOCR: iosOCR } = await import('./ocr.ios');
+      return await iosOCR(imageUri);
+    } else if (Platform.OS === 'android') {
+      const { performOCR: androidOCR } = await import('./ocr.android');
+      return await androidOCR(imageUri);
+    }
+  } catch (error) {
+    console.error('[OCR] Error loading platform-specific OCR:', error);
+  }
   
+  // Fallback if platform-specific implementation fails
   console.log('[OCR] Fallback: No platform-specific OCR available');
   return {
     detectedNumber: null,

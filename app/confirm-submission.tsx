@@ -24,6 +24,8 @@ export default function ConfirmSubmissionScreen() {
   const [submitError, setSubmitError] = useState<string>('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [ocrStatus, setOcrStatus] = useState<string>('');
+  const [ocrRawText, setOcrRawText] = useState<string[]>([]);
+  const [ocrConfidence, setOcrConfidence] = useState<number>(0);
 
   console.log('ConfirmSubmissionScreen: Photo URI:', photoUri);
   console.log('ConfirmSubmissionScreen: Location:', latitude, longitude);
@@ -62,29 +64,40 @@ export default function ConfirmSubmissionScreen() {
 
       // Step 2: Perform on-device OCR (zero cloud API calls)
       console.log('[OCR] Starting on-device text recognition...');
+      console.log('[OCR] Platform:', Platform.OS);
+      console.log('[OCR] Using:', Platform.OS === 'ios' ? 'Apple Vision Framework' : 'Google ML Kit');
       setOcrStatus('Detecting numbers on-device...');
       
       const ocrResult = await performOCR(photoUri);
       
-      console.log('[OCR] On-device OCR result:', ocrResult);
+      console.log('[OCR] ===== ON-DEVICE OCR RESULT =====');
       console.log('[OCR] Detected number:', ocrResult.detectedNumber);
       console.log('[OCR] All text found:', ocrResult.allText);
-      console.log('[OCR] Confidence:', ocrResult.confidence);
+      console.log('[OCR] Confidence score:', ocrResult.confidence);
+      console.log('[OCR] Raw text blocks:', JSON.stringify(ocrResult.allText, null, 2));
+      console.log('[OCR] ===================================');
+
+      // Store raw OCR data for debugging
+      setOcrRawText(ocrResult.allText);
+      setOcrConfidence(ocrResult.confidence);
 
       if (ocrResult.detectedNumber !== null && ocrResult.detectedNumber !== undefined) {
-        const detectedStr = String(ocrResult.detectedNumber);
+        const detectedStr = String(ocrResult.detectedNumber).padStart(6, '0');
         setDetectedNumber(detectedStr);
         setConfirmedNumber(detectedStr);
-        console.log('[OCR] Number detected successfully:', detectedStr);
-        setOcrStatus('Number detected!');
+        console.log('[OCR] ✅ Number detected successfully:', detectedStr);
+        setOcrStatus(`Number detected: ${detectedStr}`);
       } else {
-        console.log('[OCR] No number detected, user will enter manually');
+        console.log('[OCR] ⚠️ No number detected from OCR');
+        console.log('[OCR] User will need to enter manually');
+        console.log('[OCR] Tip: Try closer zoom, better lighting, or clearer angle');
         setDetectedNumber('');
         setConfirmedNumber('');
-        setOcrStatus('No number detected - please enter manually');
+        setOcrStatus('No number detected - try closer zoom, better light, or enter manually');
       }
     } catch (error) {
-      console.error('[OCR] Error in on-device OCR process:', error);
+      console.error('[OCR] ❌ Error in on-device OCR process:', error);
+      console.error('[OCR] Error details:', JSON.stringify(error, null, 2));
       setDetectedNumber('');
       setConfirmedNumber('');
       setOcrStatus('OCR failed - please enter manually');
@@ -122,6 +135,8 @@ export default function ConfirmSubmissionScreen() {
       console.log('[API] Confirmed number:', confirmedNumber);
       console.log('[API] Photo URL:', uploadedPhotoUrl);
       console.log('[API] Location:', latitude, longitude);
+      console.log('[API] OCR raw text:', ocrRawText);
+      console.log('[API] OCR confidence:', ocrConfidence);
       
       const result = await authenticatedPost<{
         success: boolean;
@@ -162,7 +177,6 @@ export default function ConfirmSubmissionScreen() {
       console.error('ConfirmSubmissionScreen: Error submitting entry:', error);
       const rawMessage = error?.message || 'Failed to submit entry. Please try again.';
       
-      // Parse the error message from the API response body if present
       let parsedMessage = rawMessage;
       try {
         const jsonMatch = rawMessage.match(/\{.*\}/s);
@@ -209,6 +223,7 @@ export default function ConfirmSubmissionScreen() {
   };
 
   const confirmedNumberDisplay = confirmedNumber.padStart(6, '0');
+  const platformName = Platform.OS === 'ios' ? 'Apple Vision' : Platform.OS === 'android' ? 'Google ML Kit' : 'Web';
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
@@ -251,7 +266,7 @@ export default function ConfirmSubmissionScreen() {
                 size={16} 
                 color={colors.success} 
               />
-              <Text style={styles.ocrBadgeText}>On-Device Processing</Text>
+              <Text style={styles.ocrBadgeText}>On-Device Processing • {platformName}</Text>
             </View>
           </View>
         ) : (
@@ -266,10 +281,19 @@ export default function ConfirmSubmissionScreen() {
               <View style={styles.ocrInfoTextContainer}>
                 <Text style={styles.ocrInfoTitle}>100% On-Device OCR</Text>
                 <Text style={styles.ocrInfoSubtitle}>
-                  {Platform.OS === 'ios' ? 'Apple Vision Framework' : 'Google ML Kit'} • Zero Cloud Costs
+                  {platformName} • Zero Cloud Costs • Privacy First
                 </Text>
               </View>
             </View>
+
+            {ocrRawText.length > 0 && (
+              <View style={styles.debugCard}>
+                <Text style={styles.debugTitle}>🔍 OCR Debug Info</Text>
+                <Text style={styles.debugText}>Raw text blocks: {ocrRawText.length}</Text>
+                <Text style={styles.debugText}>Confidence: {(ocrConfidence * 100).toFixed(0)}%</Text>
+                <Text style={styles.debugText}>Text found: {ocrRawText.join(', ')}</Text>
+              </View>
+            )}
 
             <View style={styles.detectionCard}>
               <Text style={styles.detectionLabel}>Detected Number:</Text>
@@ -277,9 +301,17 @@ export default function ConfirmSubmissionScreen() {
                 <Text style={styles.detectedNumber}>{detectedNumber || 'None'}</Text>
               </View>
               {!detectedNumber && (
-                <Text style={styles.detectionHint}>
-                  No number detected automatically. Please enter manually below.
-                </Text>
+                <View style={styles.detectionHintContainer}>
+                  <IconSymbol 
+                    ios_icon_name="lightbulb.fill" 
+                    android_material_icon_name="lightbulb" 
+                    size={20} 
+                    color={colors.warning} 
+                  />
+                  <Text style={styles.detectionHint}>
+                    No number detected - try closer zoom, better light, or enter manually
+                  </Text>
+                </View>
               )}
             </View>
 
@@ -420,6 +452,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
+  debugCard: {
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 193, 7, 0.3)',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.warning,
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
   detectionCard: {
     backgroundColor: colors.card,
     borderRadius: 15,
@@ -444,10 +496,17 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
+  detectionHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+  },
   detectionHint: {
+    flex: 1,
     fontSize: 13,
     color: colors.textSecondary,
-    marginTop: 10,
     textAlign: 'center',
     fontStyle: 'italic',
   },

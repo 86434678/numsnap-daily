@@ -1,174 +1,342 @@
 
-# Custom Development Client Setup
+# Custom Dev Client Setup for On-Device OCR
 
-This guide explains how to build and install a custom development client for NumSnap Daily to test on-device OCR features.
+NumSnap Daily uses **on-device OCR** (Optical Character Recognition) to detect 6-digit numbers from photos with **zero cloud API costs**. This requires a custom development client build with native modules.
 
-## What is a Custom Development Client?
+## Why Custom Dev Client?
 
-A custom development client is a version of your app that includes native modules (like on-device OCR) but still supports live reload and fast refresh during development. It's like Expo Go, but with your app's native code included.
+- **iOS**: Apple Vision framework requires native Swift/Objective-C bridging
+- **Android**: Google ML Kit requires native Kotlin/Java integration
+- **Expo Go**: Does not support custom native modules
+- **Solution**: Build a custom dev client with `expo-dev-client`
 
-## Prerequisites
+## Current Status
 
-Before building, ensure you have:
-- An EAS account (sign up at https://expo.dev)
-- For iOS: Apple Developer account
-- For Android: No special account needed
+The OCR implementation is **ready** but requires native module integration:
 
-## Configuration Changes Made
+- ✅ `utils/ocr.ts` - Cross-platform OCR dispatcher
+- ✅ `utils/ocr.ios.ts` - iOS Vision framework integration (needs native bridge)
+- ✅ `utils/ocr.android.ts` - Android ML Kit integration (needs native bridge)
+- ✅ `app/confirm-submission.tsx` - UI with OCR processing and fallback
+- ⏳ Native modules - Need to be added to custom dev client
 
-1. **Installed expo-dev-client**: This package enables custom development builds
-2. **Updated app.json**: 
-   - Changed slug to "numsnap-daily" (no spaces)
-   - Changed scheme to "numsnapdaily" (for deep linking)
-   - Set proper bundle identifiers for iOS and Android
-3. **Updated eas.json**: Added proper development profile with `developmentClient: true`
+## Option 1: iOS - Apple Vision Framework (Recommended)
 
-## Building the Custom Dev Client
+### Requirements
+- iOS 13+ (all modern devices)
+- Xcode 12+
+- Custom dev client build
 
-### For iOS (iPhone/iPad)
+### Implementation Steps
 
-**Option 1: Build for Physical Device (Recommended)**
+1. **Install expo-dev-client** (already installed):
+   ```bash
+   npx expo install expo-dev-client
+   ```
+
+2. **Create native module for Vision framework**:
+   
+   Create `ios/VisionOCRModule.swift`:
+   ```swift
+   import Vision
+   import UIKit
+   
+   @objc(VisionOCRModule)
+   class VisionOCRModule: NSObject {
+     
+     @objc
+     func recognizeText(_ imageUri: String, 
+                       options: NSDictionary,
+                       resolver: @escaping RCTPromiseResolveBlock,
+                       rejecter: @escaping RCTPromiseRejectBlock) {
+       
+       guard let url = URL(string: imageUri),
+             let imageData = try? Data(contentsOf: url),
+             let image = UIImage(data: imageData),
+             let cgImage = image.cgImage else {
+         rejecter("INVALID_IMAGE", "Could not load image", nil)
+         return
+       }
+       
+       let request = VNRecognizeTextRequest { request, error in
+         if let error = error {
+           rejecter("OCR_ERROR", error.localizedDescription, error)
+           return
+         }
+         
+         guard let observations = request.results as? [VNRecognizedTextObservation] else {
+           resolver(["textBlocks": [], "confidence": 0])
+           return
+         }
+         
+         var textBlocks: [String] = []
+         var totalConfidence: Float = 0
+         
+         for observation in observations {
+           if let topCandidate = observation.topCandidates(1).first {
+             textBlocks.append(topCandidate.string)
+             totalConfidence += topCandidate.confidence
+           }
+         }
+         
+         let avgConfidence = textBlocks.isEmpty ? 0 : totalConfidence / Float(textBlocks.count)
+         
+         resolver([
+           "textBlocks": textBlocks,
+           "confidence": avgConfidence
+         ])
+       }
+       
+       // Configure Vision request
+       request.recognitionLevel = .fast
+       request.recognitionLanguages = ["en-US"]
+       request.minimumTextHeight = 0.05
+       request.usesLanguageCorrection = true
+       
+       let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+       
+       DispatchQueue.global(qos: .userInitiated).async {
+         do {
+           try handler.perform([request])
+         } catch {
+           rejecter("OCR_ERROR", error.localizedDescription, error)
+         }
+       }
+     }
+     
+     @objc
+     static func requiresMainQueueSetup() -> Bool {
+       return false
+     }
+   }
+   ```
+
+3. **Create bridge header** `ios/VisionOCRModule.m`:
+   ```objc
+   #import <React/RCTBridgeModule.h>
+   
+   @interface RCT_EXTERN_MODULE(VisionOCRModule, NSObject)
+   
+   RCT_EXTERN_METHOD(recognizeText:(NSString *)imageUri
+                     options:(NSDictionary *)options
+                     resolver:(RCTPromiseResolveBlock)resolve
+                     rejecter:(RCTPromiseRejectBlock)reject)
+   
+   @end
+   ```
+
+4. **Update `utils/ocr.ios.ts`** to use the native module:
+   ```typescript
+   import { NativeModules } from 'react-native';
+   const { VisionOCRModule } = NativeModules;
+   
+   async function performVisionOCR(imageUri: string): Promise<{ text: string[]; confidence: number }> {
+     if (VisionOCRModule && VisionOCRModule.recognizeText) {
+       const result = await VisionOCRModule.recognizeText(imageUri, {
+         recognitionLevel: 'fast',
+         recognitionLanguages: ['en-US'],
+         minimumTextHeight: 0.05,
+         usesLanguageCorrection: true,
+       });
+       return { text: result.textBlocks, confidence: result.confidence };
+     }
+     return { text: [], confidence: 0 };
+   }
+   ```
+
+5. **Build custom dev client**:
+   ```bash
+   npx expo prebuild
+   npx expo run:ios
+   ```
+
+## Option 2: Android - Google ML Kit (Recommended)
+
+### Requirements
+- Android 5.0+ (API 21+)
+- Android Studio
+- Custom dev client build
+
+### Implementation Steps
+
+1. **Add ML Kit dependency** to `android/app/build.gradle`:
+   ```gradle
+   dependencies {
+     implementation 'com.google.mlkit:text-recognition:16.0.0'
+   }
+   ```
+
+2. **Create native module** `android/app/src/main/java/com/yourapp/MLKitOCRModule.kt`:
+   ```kotlin
+   package com.yourapp
+   
+   import com.facebook.react.bridge.*
+   import com.google.mlkit.vision.common.InputImage
+   import com.google.mlkit.vision.text.TextRecognition
+   import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+   import java.io.File
+   
+   class MLKitOCRModule(reactContext: ReactApplicationContext) : 
+     ReactContextBaseJavaModule(reactContext) {
+     
+     override fun getName() = "MLKitOCRModule"
+     
+     @ReactMethod
+     fun recognizeText(imageUri: String, options: ReadableMap, promise: Promise) {
+       try {
+         val file = File(imageUri.replace("file://", ""))
+         val image = InputImage.fromFilePath(reactApplicationContext, android.net.Uri.fromFile(file))
+         
+         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+         
+         recognizer.process(image)
+           .addOnSuccessListener { visionText ->
+             val textBlocks = visionText.textBlocks.map { it.text }
+             val result = Arguments.createMap().apply {
+               putArray("textBlocks", Arguments.fromList(textBlocks))
+               putDouble("confidence", 0.85)
+             }
+             promise.resolve(result)
+           }
+           .addOnFailureListener { e ->
+             promise.reject("OCR_ERROR", e.message, e)
+           }
+       } catch (e: Exception) {
+         promise.reject("OCR_ERROR", e.message, e)
+       }
+     }
+   }
+   ```
+
+3. **Register module** in `android/app/src/main/java/com/yourapp/MainApplication.kt`:
+   ```kotlin
+   override fun getPackages(): List<ReactPackage> {
+     return PackageList(this).packages.apply {
+       add(MLKitOCRPackage())
+     }
+   }
+   ```
+
+4. **Update `utils/ocr.android.ts`** to use the native module:
+   ```typescript
+   import { NativeModules } from 'react-native';
+   const { MLKitOCRModule } = NativeModules;
+   
+   async function performMLKitOCR(imageUri: string): Promise<{ text: string[]; confidence: number }> {
+     if (MLKitOCRModule && MLKitOCRModule.recognizeText) {
+       const result = await MLKitOCRModule.recognizeText(imageUri, {
+         language: 'en',
+         accuracy: 'high',
+       });
+       return { text: result.textBlocks, confidence: result.confidence };
+     }
+     return { text: [], confidence: 0 };
+   }
+   ```
+
+5. **Build custom dev client**:
+   ```bash
+   npx expo prebuild
+   npx expo run:android
+   ```
+
+## Option 3: Use Expo Config Plugin (Easiest)
+
+For Android, you can use the `expo-google-mlkit-text-recognition` package (if available):
+
 ```bash
-eas build --profile development --platform ios
+npx expo install expo-google-mlkit-text-recognition
 ```
 
-**Option 2: Build for iOS Simulator (Testing Only)**
-```bash
-eas build --profile development --platform ios --local
+Then update `app.json`:
+```json
+{
+  "expo": {
+    "plugins": [
+      "expo-google-mlkit-text-recognition"
+    ]
+  }
+}
 ```
 
-After the build completes:
-- You'll receive a download link via email and in the EAS dashboard
-- Download the .ipa file (for device) or .tar.gz (for simulator)
-- For device: Install using the EAS CLI or Apple Configurator
-- For simulator: Drag and drop the .app file onto your simulator
+## Testing OCR
 
-### For Android
+1. **Build custom dev client**:
+   ```bash
+   npx eas build --profile development --platform ios
+   npx eas build --profile development --platform android
+   ```
 
-```bash
-eas build --profile development --platform android
-```
+2. **Install on device**:
+   - Download the build from EAS
+   - Install on your test device
 
-After the build completes:
-- You'll receive a download link for an APK file
-- Download the APK to your Android device
-- Enable "Install from Unknown Sources" in your device settings
-- Tap the APK file to install
+3. **Test with clear photos**:
+   - Take photos of 6-digit numbers (house numbers, receipts, signs)
+   - Ensure good lighting and focus
+   - Try different angles and distances
 
-## Installing the Built App
+4. **Check logs**:
+   - Look for `[OCR iOS]` or `[OCR Android]` logs
+   - Verify detected text and confidence scores
+   - Confirm 6-digit number extraction
 
-### iOS Installation Methods
+## Current Behavior (Without Native Modules)
 
-**Method 1: Direct Install via EAS (Easiest)**
-1. After build completes, open the EAS dashboard link on your iPhone
-2. Tap "Install" - iOS will download and install the app
-3. Trust the developer certificate in Settings > General > VPN & Device Management
+- ✅ Photo upload works
+- ✅ UI shows "Processing on-device..."
+- ⚠️ OCR returns empty results (no native module)
+- ✅ User can manually enter number
+- ✅ Submission works with manual entry
 
-**Method 2: Using Apple Configurator 2 (Mac only)**
-1. Download Apple Configurator 2 from the Mac App Store
-2. Connect your iPhone via USB
-3. Drag the .ipa file onto your device in Configurator
-4. Trust the certificate as above
+## After Native Module Integration
 
-### Android Installation
-
-1. Download the APK file to your Android device (via email link or direct download)
-2. Open the APK file from your Downloads folder
-3. If prompted, enable "Install from Unknown Sources" for your browser/file manager
-4. Tap "Install"
-5. The app will be installed and appear in your app drawer
-
-## Running the App with Live Reload
-
-Once the custom dev client is installed on your device:
-
-### Start the Development Server
-
-```bash
-npx expo start --dev-client
-```
-
-This will:
-- Start the Metro bundler
-- Show a QR code in your terminal
-- Enable live reload and fast refresh
-
-### Connect Your Device
-
-**iOS:**
-1. Open the NumSnap Daily dev client app on your iPhone
-2. Scan the QR code from the terminal using your iPhone camera
-3. The app will connect and load your JavaScript bundle
-
-**Android:**
-1. Open the NumSnap Daily dev client app on your Android device
-2. Scan the QR code from the terminal
-3. The app will connect and load your JavaScript bundle
-
-**Alternative (if QR code doesn't work):**
-- Make sure your device and computer are on the same WiFi network
-- In the dev client app, tap "Enter URL manually"
-- Enter the URL shown in the terminal (e.g., `exp://192.168.1.100:8081`)
-
-## Testing On-Device OCR
-
-With the custom dev client installed:
-
-1. Start the dev server: `npx expo start --dev-client`
-2. Open the app on your device and connect to the dev server
-3. Navigate to the camera/photo submission flow
-4. Take a photo with numbers
-5. The on-device OCR will process the image:
-   - **iOS**: Uses Apple's VisionKit (VNRecognizeTextRequest)
-   - **Android**: Uses Google's ML Kit Text Recognition
-6. You'll see the detected number in the confirmation screen
+- ✅ Photo upload works
+- ✅ OCR detects text from photo
+- ✅ Extracts 6-digit numbers automatically
+- ✅ Pre-fills confirmation field
+- ✅ User can edit if needed
+- ✅ Submission works with detected or manual entry
 
 ## Troubleshooting
 
-### Build Fails
-- Make sure you're logged into EAS: `eas login`
-- Check that your bundle identifiers are unique
-- Verify your Apple Developer account is active (for iOS)
+### iOS Vision Not Working
+- Check iOS version (13+ required)
+- Verify native module is registered
+- Check Xcode build logs
+- Ensure image URI is accessible
 
-### App Won't Install on iOS
-- Trust the developer certificate: Settings > General > VPN & Device Management
-- Make sure your device UDID is registered in your Apple Developer account
-- Try rebuilding with `--clear-cache` flag
+### Android ML Kit Not Working
+- Check Android API level (21+ required)
+- Verify ML Kit dependency in build.gradle
+- Check logcat for errors
+- Ensure READ_EXTERNAL_STORAGE permission
 
-### App Won't Connect to Dev Server
-- Ensure device and computer are on the same WiFi network
-- Try entering the URL manually instead of scanning QR code
-- Check firewall settings aren't blocking the connection
-- Restart the dev server with `npx expo start --dev-client --clear`
+### OCR Returns Empty Results
+- Check image quality (blur, lighting, angle)
+- Verify text is clearly visible
+- Try closer zoom or better lighting
+- Check console logs for errors
 
-### OCR Not Working
-- Make sure you built with the development profile (includes native modules)
-- Check device permissions for camera and photo library
-- Look at the console logs for error messages
+## Benefits of On-Device OCR
 
-## When to Rebuild
-
-You need to rebuild the custom dev client when:
-- You add new native modules or dependencies
-- You change native configuration (app.json plugins, permissions, etc.)
-- You update Expo SDK version
-- You change bundle identifiers or app name
-
-You do NOT need to rebuild for:
-- JavaScript/TypeScript code changes (uses live reload)
-- UI/styling changes
-- Business logic changes
-- API endpoint changes
+- ✅ **Zero Cloud Costs**: No API fees (Vision/ML Kit are free)
+- ✅ **Privacy**: Photos never leave the device
+- ✅ **Speed**: Instant processing (no network latency)
+- ✅ **Offline**: Works without internet connection
+- ✅ **Scalability**: No rate limits or quotas
 
 ## Next Steps
 
-After installing the custom dev client:
-1. Test the on-device OCR feature thoroughly
-2. Make JavaScript changes and see them live reload
-3. When ready for production, build with: `eas build --profile production --platform all`
+1. Choose implementation option (native modules or config plugin)
+2. Build custom dev client with OCR support
+3. Test on real devices with various photos
+4. Fine-tune OCR parameters for best accuracy
+5. Deploy to production via EAS Build
 
-## Additional Resources
+## Resources
 
-- EAS Build Documentation: https://docs.expo.dev/build/introduction/
-- expo-dev-client Documentation: https://docs.expo.dev/develop/development-builds/introduction/
-- EAS Dashboard: https://expo.dev/accounts/[your-account]/projects/numsnap-daily
+- [Expo Dev Client Docs](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Apple Vision Framework](https://developer.apple.com/documentation/vision)
+- [Google ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition)
+- [EAS Build](https://docs.expo.dev/build/introduction/)
