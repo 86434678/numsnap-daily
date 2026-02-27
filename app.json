@@ -1,11 +1,11 @@
+
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "numsnap-daily",
+    "slug": "numsnapdaily",
     "version": "1.0.0",
     "updates": {
       "enabled": true,
-      "runtimeVersion": "1.0.0",
       "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290"
     },
     "orientation": "portrait",
@@ -82,7 +82,7 @@
         }
       ]
     ],
-    "scheme": "NumSnap Daily",
+    "scheme": "numsnapdaily",
     "experiments": {
       "typedRoutes": true
     },
