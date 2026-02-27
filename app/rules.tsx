@@ -28,10 +28,10 @@ export default function RulesScreen() {
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Sponsor</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Sponsor: NumSnap Daily LLC, [INSERT FULL LEGAL MAILING ADDRESS]
+              • Sponsor: SnapForge Apps
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • Contact: support@[INSERTDOMAIN].com
+              • Contact: contact@snapforgeapps.com
             </Text>
           </View>
 
@@ -270,15 +270,12 @@ export default function RulesScreen() {
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               • Information may be shared with trusted service providers solely to operate the Promotion (payment processing, fraud prevention, hosting, analytics).
             </Text>
-            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • All data is handled in accordance with our Privacy Policy at [INSERT LINK].
-            </Text>
           </View>
 
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Governing Law</Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
-              • This Promotion is governed by the laws of the State of [INSERT STATE], without regard to conflict of law principles.
+              • This Promotion is governed by the laws of the State of Idaho, without regard to conflict of law principles.
             </Text>
           </View>
 
