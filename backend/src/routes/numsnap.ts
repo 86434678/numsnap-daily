@@ -845,4 +845,72 @@ export function registerNumSnapRoutes(app: App) {
       throw error;
     }
   });
+
+  // GET /api/history - Get user's past daily entries with dates and photos
+  app.fastify.get('/api/history', {
+    schema: {
+      description: 'Get current user\'s past daily entries ordered by date (most recent first), limited to 50 entries',
+      tags: ['history'],
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              date: { type: 'string', format: 'date' },
+              photoUrl: { type: 'string' },
+              confirmedNumber: { type: 'number' },
+              targetNumber: { type: 'number' },
+              isWinner: { type: 'boolean' },
+              createdAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+        401: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply): Promise<Array<{ id: string; date: string; photoUrl: string; confirmedNumber: number; targetNumber: number; isWinner: boolean; createdAt: string }> | void> => {
+    const session = await requireAuth(request, reply);
+    if (!session) return;
+
+    const userId = session.user.id;
+    app.logger.info({ userId }, 'Fetching user history');
+
+    try {
+      // Fetch user's submissions ordered by date descending, limited to 50
+      const submissions = await app.db.query.submissions.findMany({
+        where: eq(schema.submissions.userId, userId),
+        orderBy: desc(schema.submissions.submissionDate),
+        limit: 50,
+      });
+
+      // Get all daily numbers for lookup
+      const dailyNumbers = await app.db.query.dailyNumbers.findMany();
+      const numbersByDate = new Map<string, number>();
+      for (const dn of dailyNumbers) {
+        numbersByDate.set(String(dn.date), Number(dn.targetNumber));
+      }
+
+      // Format submissions
+      const history = submissions.map((sub) => ({
+        id: String(sub.id),
+        date: sub.submissionDate,
+        photoUrl: sub.photoUrl,
+        confirmedNumber: sub.confirmedNumber,
+        targetNumber: numbersByDate.get(sub.submissionDate) ?? 0,
+        isWinner: sub.isWinner,
+        createdAt: sub.createdAt.toISOString(),
+      }));
+
+      app.logger.info({ userId, count: history.length }, 'User history fetched');
+      return history;
+    } catch (error) {
+      app.logger.error({ err: error, userId }, 'Failed to fetch user history');
+      throw error;
+    }
+  });
 }
