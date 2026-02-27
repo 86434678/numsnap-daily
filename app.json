@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "NumSnap Daily",
+    "slug": "numsnap-daily",
     "version": "1.0.0",
     "updates": {
       "enabled": true,
