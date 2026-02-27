@@ -41,6 +41,12 @@ export default function TabLayout() {
       label: 'Home',
     },
     {
+      name: 'history',
+      route: '/(tabs)/history',
+      icon: 'history',
+      label: 'History',
+    },
+    {
       name: 'profile',
       route: '/(tabs)/profile',
       icon: 'person',
@@ -68,6 +74,7 @@ export default function TabLayout() {
         }}
       >
         <Stack.Screen key="home" name="(home)" />
+        <Stack.Screen key="history" name="history" />
         <Stack.Screen key="profile" name="profile" />
         {isAdmin && <Stack.Screen key="admin" name="admin" />}
       </Stack>

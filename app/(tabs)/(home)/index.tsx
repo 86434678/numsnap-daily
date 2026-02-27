@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   },
   numberCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 30,
     alignItems: 'center',
     marginBottom: 20,

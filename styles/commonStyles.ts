@@ -1,10 +1,11 @@
+
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 // NumSnap Daily - Vibrant, fun color palette
 export const colors = {
-  // Gradient background colors
-  gradientStart: '#4A90E2', // Fun blue
-  gradientEnd: '#9B59B6', // Purple
+  // Gradient background colors (updated for dark theme)
+  gradientStart: '#121212', // Dark gradient start
+  gradientEnd: '#1e1e1e', // Dark gradient end
   
   // Primary colors
   primary: '#FFD700', // Bright yellow (camera lens)
@@ -100,7 +101,7 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.backgroundAlt,
     borderColor: colors.grey,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 10,
     marginVertical: 8,
     elevation: 2,
