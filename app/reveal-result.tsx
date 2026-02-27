@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/IconSymbol';
@@ -83,6 +83,13 @@ interface RevealData {
   submissionTime: string;
   userName: string;
   submissionId?: string;
+  photoUrl?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    city?: string;
+  };
+  isManualEntry?: boolean;
 }
 
 export default function RevealResultScreen() {
@@ -105,6 +112,9 @@ export default function RevealResultScreen() {
         submissionTime: params.submissionTime as string,
         userName: params.userName as string,
         submissionId: params.submissionId as string || '',
+        photoUrl: params.photoUrl as string,
+        location: params.location ? JSON.parse(params.location as string) : undefined,
+        isManualEntry: params.isManualEntry === 'true',
       });
       setLoading(false);
     } else {
@@ -165,6 +175,12 @@ export default function RevealResultScreen() {
     day: 'numeric',
     year: 'numeric'
   });
+
+  const locationText = revealData.location?.city 
+    ? revealData.location.city 
+    : revealData.location 
+      ? `${revealData.location.latitude.toFixed(4)}, ${revealData.location.longitude.toFixed(4)}`
+      : 'Location not available';
 
   const handleClaimPrize = () => {
     console.log('RevealResultScreen: User tapped Claim Prize button');
@@ -248,6 +264,45 @@ export default function RevealResultScreen() {
               </>
             )}
           </View>
+
+          {/* Post-Win Submission Details (only if match) */}
+          {revealData.isMatch && (
+            <View style={styles.submissionDetailsCard}>
+              <Text style={styles.detailsTitle}>Your Submission Details</Text>
+              
+              {revealData.photoUrl && (
+                <View style={styles.photoContainer}>
+                  <Image 
+                    source={{ uri: revealData.photoUrl }} 
+                    style={styles.submissionPhoto}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+              
+              <View style={styles.detailRow}>
+                <IconSymbol 
+                  ios_icon_name="location.fill" 
+                  android_material_icon_name="location-on" 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={styles.detailText}>{locationText}</Text>
+              </View>
+              
+              {revealData.isManualEntry && (
+                <View style={styles.detailRow}>
+                  <IconSymbol 
+                    ios_icon_name="hand.raised.fill" 
+                    android_material_icon_name="pan-tool" 
+                    size={20} 
+                    color={colors.secondary} 
+                  />
+                  <Text style={styles.detailText}>Manual entry provided by user</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Prize Info */}
           {revealData.isMatch && (
@@ -433,6 +488,47 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  submissionDetailsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  detailsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  photoContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 15,
+    backgroundColor: '#F0F0F0',
+  },
+  submissionPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  detailText: {
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
   },
   prizeCard: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',

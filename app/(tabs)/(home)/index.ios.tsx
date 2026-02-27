@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Stack, useRouter, Redirect } from "expo-router";
 import { useTheme } from "@react-navigation/native";
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from "react-native";
@@ -28,6 +28,10 @@ export default function HomeScreen() {
   const [showHintModal, setShowHintModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState<boolean | null>(null);
   const [checkingAge, setCheckingAge] = useState(true);
+
+  // Hidden admin preview feature
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   console.log('HomeScreen: User authenticated:', !!user);
 
@@ -239,6 +243,37 @@ export default function HomeScreen() {
     router.push('/rules');
   };
 
+  // Hidden admin preview feature: Tap logo 5 times within 3 seconds
+  const handleLogoPress = () => {
+    // Only allow admin users to access preview
+    if (!user?.isAdmin) {
+      // Silently ignore for non-admin users
+      return;
+    }
+    
+    console.log('[Admin Preview] Logo tapped, count:', tapCountRef.current + 1);
+    
+    tapCountRef.current += 1;
+    
+    // Clear existing timer
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+    }
+    
+    // If 5 taps within 3 seconds, open admin preview
+    if (tapCountRef.current >= 5) {
+      console.log('[Admin Preview] 5 taps detected - opening admin preview');
+      tapCountRef.current = 0;
+      router.push('/admin-preview');
+    } else {
+      // Reset counter after 3 seconds
+      tapTimerRef.current = setTimeout(() => {
+        console.log('[Admin Preview] Tap counter reset');
+        tapCountRef.current = 0;
+      }, 3000);
+    }
+  };
+
   if (!authLoading && !user) {
     return <Redirect href="/auth" />;
   }
@@ -271,10 +306,14 @@ export default function HomeScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.container}
         >
-          <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.header} 
+            onPress={handleLogoPress}
+            activeOpacity={0.9}
+          >
             <Text style={styles.appTitle}>NumSnap</Text>
             <Text style={styles.appSubtitle}>Daily</Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.numberCard}>
             <Text style={styles.cardLabel}>Today&apos;s Challenge</Text>

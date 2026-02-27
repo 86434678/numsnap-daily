@@ -2,6 +2,7 @@
 import { Platform, NativeModules } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import { extractBestNumber } from './ocr';
 
 /**
  * Android-specific OCR using Google ML Kit Text Recognition
@@ -15,71 +16,6 @@ interface OCRResult {
   detectedNumber: number | null;
   allText: string[];
   confidence: number;
-}
-
-/**
- * Extract the most likely 6-digit number (0-999999) from detected text.
- * Handles various formats: house numbers, license plates, receipts, signs, etc.
- */
-function extractBestNumber(textBlocks: string[]): { number: number | null; confidence: number } {
-  console.log('[OCR Android] Extracting best number from', textBlocks.length, 'text blocks');
-  console.log('[OCR Android] Text blocks:', textBlocks);
-  
-  const candidates: { value: number; confidence: number; source: string }[] = [];
-  
-  for (const text of textBlocks) {
-    // Remove all non-digit characters
-    const digitsOnly = text.replace(/[^0-9]/g, '');
-    
-    if (digitsOnly.length === 0) continue;
-    
-    // Look for exact 6-digit sequences (highest confidence)
-    if (digitsOnly.length === 6) {
-      const num = parseInt(digitsOnly, 10);
-      if (num >= 0 && num <= 999999) {
-        candidates.push({ value: num, confidence: 1.0, source: text });
-        console.log('[OCR Android] Found exact 6-digit match:', num, 'from', text);
-      }
-    }
-    
-    // Look for sequences that can be truncated to 6 digits
-    if (digitsOnly.length > 6) {
-      // Try first 6 digits
-      const first6 = parseInt(digitsOnly.substring(0, 6), 10);
-      if (first6 >= 0 && first6 <= 999999) {
-        candidates.push({ value: first6, confidence: 0.8, source: text });
-        console.log('[OCR Android] Found 6-digit prefix:', first6, 'from', text);
-      }
-      
-      // Try last 6 digits
-      const last6 = parseInt(digitsOnly.substring(digitsOnly.length - 6), 10);
-      if (last6 >= 0 && last6 <= 999999) {
-        candidates.push({ value: last6, confidence: 0.7, source: text });
-        console.log('[OCR Android] Found 6-digit suffix:', last6, 'from', text);
-      }
-    }
-    
-    // Pad shorter sequences with zeros (lower confidence)
-    if (digitsOnly.length < 6 && digitsOnly.length > 0) {
-      const padded = digitsOnly.padStart(6, '0');
-      const num = parseInt(padded, 10);
-      if (num >= 0 && num <= 999999) {
-        candidates.push({ value: num, confidence: 0.5, source: text });
-        console.log('[OCR Android] Found padded number:', num, 'from', text);
-      }
-    }
-  }
-  
-  if (candidates.length === 0) {
-    console.log('[OCR Android] No valid number candidates found');
-    return { number: null, confidence: 0 };
-  }
-  
-  // Sort by confidence and return the best match
-  candidates.sort((a, b) => b.confidence - a.confidence);
-  console.log('[OCR Android] Best candidate:', candidates[0].value, 'confidence:', candidates[0].confidence, 'from:', candidates[0].source);
-  
-  return { number: candidates[0].value, confidence: candidates[0].confidence };
 }
 
 /**

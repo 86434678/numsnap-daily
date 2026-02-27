@@ -138,6 +138,9 @@ export default function ConfirmSubmissionScreen() {
       console.log('[API] OCR raw text:', ocrRawText);
       console.log('[API] OCR confidence:', ocrConfidence);
       
+      // Determine if this was a manual entry (no OCR detected number, user typed manually)
+      const isManualEntryFlag = !detectedNumber || detectedNumber === '';
+      
       const result = await authenticatedPost<{
         success: boolean;
         submission: { id: string; confirmedNumber: number; isWinner: boolean };
@@ -148,6 +151,7 @@ export default function ConfirmSubmissionScreen() {
         confirmedNumber: parseInt(confirmedNumber, 10),
         latitude,
         longitude,
+        isManualEntry: isManualEntryFlag,
       });
 
       console.log('[API] /api/submit-entry response:', result);
@@ -164,6 +168,9 @@ export default function ConfirmSubmissionScreen() {
               submissionTime: result.revealData.submissionTime,
               userName: result.revealData.userName,
               submissionId: result.submission?.id || '',
+              photoUrl: uploadedPhotoUrl || '',
+              location: JSON.stringify({ latitude, longitude }),
+              isManualEntry: isManualEntryFlag ? 'true' : 'false',
             },
           });
         } else {

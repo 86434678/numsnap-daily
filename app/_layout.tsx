@@ -305,6 +305,13 @@ export default function RootLayout() {
                   {/* Prize claim screen */}
                   <Stack.Screen name="claim-prize" options={{ headerShown: true, title: "Claim Your Prize", presentation: "modal" }} />
                   
+                  {/* Admin preview screens (hidden from normal users) */}
+                  <Stack.Screen name="admin-preview" options={{ headerShown: false, presentation: "modal" }} />
+                  <Stack.Screen name="admin-preview-win" options={{ headerShown: false, presentation: "modal" }} />
+                  <Stack.Screen name="admin-preview-paywall" options={{ headerShown: false, presentation: "modal" }} />
+                  <Stack.Screen name="admin-preview-post-win" options={{ headerShown: false, presentation: "modal" }} />
+                  <Stack.Screen name="admin-preview-postwin" options={{ headerShown: false, presentation: "modal" }} />
+                  
                   {/* 404 */}
                   <Stack.Screen name="+not-found" options={{ title: "Oops!" }} />
                 </Stack>

@@ -13,6 +13,7 @@ interface User {
   image?: string;
   ageVerified?: boolean;
   verified?: boolean;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -225,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fetch full user profile from /api/me to get ageVerified status
         try {
           console.log("[AuthContext] Fetching /api/me for full profile...");
-          const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean }>("/api/me");
+          const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean; isAdmin?: boolean }>("/api/me");
           console.log("[AuthContext] /api/me response:", profile);
           
           const isEmailVerified = profile.emailVerified ?? profile.verified ?? false;
@@ -236,6 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: profile.name,
             ageVerified: profile.ageVerified,
             verified: isEmailVerified,
+            isAdmin: profile.isAdmin ?? false,
           };
           
           const isAgeVerified = profile.ageVerified ?? false;
@@ -301,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await persistAgeVerified(data.ageVerified ?? false);
       
       if (user) {
-        const updatedUser = { ...user, ageVerified: data.ageVerified };
+        const updatedUser = { ...user, ageVerified: data.ageVerified ?? false };
         setUser(updatedUser);
         await persistUserData(updatedUser);
       }
@@ -337,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch user profile to check email verification status
       console.log("[AuthContext] Login successful, checking email verification status...");
       try {
-        const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean }>("/api/me");
+        const profile = await authenticatedGet<{ id: string; email: string; name: string; ageVerified: boolean; emailVerified?: boolean; verified?: boolean; isAdmin?: boolean }>("/api/me");
         console.log("[AuthContext] Profile after login:", profile);
         
         const isEmailVerified = profile.emailVerified ?? profile.verified ?? true;
@@ -357,6 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: profile.name,
           ageVerified: profile.ageVerified,
           verified: isEmailVerified,
+          isAdmin: profile.isAdmin ?? false,
         };
         
         setUser(fullUser);
