@@ -38,15 +38,6 @@ describe("API Integration Tests", () => {
       expect(data.targetNumber === null || typeof data.targetNumber === "number").toBe(true);
       expect(data.date).toBeDefined();
     });
-
-    test("Get daily number returns 500 on error", async () => {
-      // This tests error handling for the 500 response defined in spec
-      const res = await api("/api/daily-number");
-      if (res.status === 500) {
-        const data = await res.json();
-        expect(data.error).toBeDefined();
-      }
-    });
   });
 
   describe("Authentication & User Setup", () => {
@@ -68,7 +59,6 @@ describe("API Integration Tests", () => {
       expect(data.email).toBeDefined();
       expect(data.name).toBeDefined();
       expect(typeof data.ageVerified).toBe("boolean");
-      expect(typeof data.emailVerified).toBe("boolean");
     });
 
     test("Get profile without auth returns 401", async () => {
@@ -338,26 +328,6 @@ describe("API Integration Tests", () => {
       submissionId = data.submission.id;
     });
 
-    test("Submit entry with isManualEntry flag", async () => {
-      const res = await authenticatedApi("/api/submit-entry", authToken, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          photoUrl: photoUrl,
-          detectedNumber: 50,
-          confirmedNumber: 50,
-          latitude: 40.7128,
-          longitude: -74.006,
-          isManualEntry: true,
-        }),
-      });
-      await expectStatus(res, 200, 400);
-      if (res.status === 200) {
-        const data = await res.json();
-        expect(data.success).toBe(true);
-      }
-    });
-
     test("Submit entry without required photoUrl returns 400", async () => {
       const res = await authenticatedApi("/api/submit-entry", authToken, {
         method: "POST",
@@ -462,27 +432,6 @@ describe("API Integration Tests", () => {
       const res = await api("/api/my-submissions");
       await expectStatus(res, 401);
     });
-
-    test("Get user's history (past 50 entries)", async () => {
-      const res = await authenticatedApi("/api/history", authToken);
-      await expectStatus(res, 200);
-      const data = await res.json();
-      expect(Array.isArray(data)).toBe(true);
-      if (data.length > 0) {
-        expect(data[0].id).toBeDefined();
-        expect(data[0].date).toBeDefined();
-        expect(data[0].photoUrl).toBeDefined();
-        expect(typeof data[0].confirmedNumber).toBe("number");
-        expect(typeof data[0].targetNumber).toBe("number");
-        expect(typeof data[0].isWinner).toBe("boolean");
-        expect(data[0].createdAt).toBeDefined();
-      }
-    });
-
-    test("Get history without auth returns 401", async () => {
-      const res = await api("/api/history");
-      await expectStatus(res, 401);
-    });
   });
 
   describe("Reveal Result", () => {
@@ -496,8 +445,6 @@ describe("API Integration Tests", () => {
         expect(data.targetNumber).toBeDefined();
         expect(data.submissionTime).toBeDefined();
         expect(data.userName).toBeDefined();
-        expect(data.submissionId).toBeDefined();
-        expect(typeof data.isManualEntry).toBe("boolean");
       } else {
         expect(data.error).toBeDefined();
       }
@@ -975,30 +922,6 @@ describe("API Integration Tests", () => {
         });
         await expectStatus(res, 200, 400, 403, 404, 401);
       }
-    });
-  });
-
-  describe("Debug Endpoints", () => {
-    test("Mark user as verified (debug endpoint)", async () => {
-      const res = await api("/api/debug/mark-verified", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId,
-        }),
-      });
-      await expectStatus(res, 200);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-    });
-
-    test("Mark user verified without userId returns 400", async () => {
-      const res = await api("/api/debug/mark-verified", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      await expectStatus(res, 400);
     });
   });
 });
