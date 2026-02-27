@@ -15,6 +15,7 @@ export default function VerifyScreen() {
   useEffect(() => {
     const verifyEmail = async () => {
       if (!token) {
+        console.log("[Verify] No token provided");
         setStatus("error");
         setMessage("Invalid verification link");
         setTimeout(() => router.replace("/(auth)/login"), 3000);
@@ -24,9 +25,13 @@ export default function VerifyScreen() {
       try {
         console.log("[Verify] Verifying email with token:", token);
         const result = await handleDeepLinkVerification(token);
+        console.log("[Verify] Verification successful:", result);
         setStatus("success");
-        setMessage(result.message || "Email verified successfully!");
-        setTimeout(() => router.replace("/(auth)/login"), 2000);
+        setMessage(result.message || "Email verified successfully! Please log in.");
+        setTimeout(() => {
+          console.log("[Verify] Redirecting to login screen");
+          router.replace("/(auth)/login");
+        }, 2000);
       } catch (error: any) {
         console.error("[Verify] Verification failed:", error);
         setStatus("error");

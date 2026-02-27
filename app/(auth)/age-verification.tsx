@@ -19,11 +19,11 @@ export default function AgeVerificationScreen() {
   const router = useRouter();
   const { verifyAge, user } = useAuth();
 
-  // Default to 18 years ago
+  // Default to exactly 18 years ago from today
   const eighteenYearsAgo = new Date();
   eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
-  const [birthDate, setBirthDate] = useState(eighteenYearsAgo);
+  const [selectedDate, setSelectedDate] = useState(eighteenYearsAgo);
   const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +54,9 @@ export default function AgeVerificationScreen() {
   };
 
   const handleVerifyAge = async () => {
-    const age = calculateAge(birthDate);
+    const age = calculateAge(selectedDate);
+    
+    console.log("[AgeVerification] User selected date:", selectedDate, "calculated age:", age);
     
     if (age < 18) {
       setError("You must be 18 or older to use NumSnap Daily.");
@@ -64,8 +66,8 @@ export default function AgeVerificationScreen() {
     setLoading(true);
     setError("");
     try {
-      console.log("[AgeVerification] Verifying age with birthdate:", birthDate, "age:", age);
-      await verifyAge(birthDate);
+      console.log("[AgeVerification] Verifying age with birthdate:", selectedDate, "age:", age);
+      await verifyAge(selectedDate);
       console.log("[AgeVerification] Age verified successfully");
       
       showAlert(
@@ -86,19 +88,22 @@ export default function AgeVerificationScreen() {
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (event: any, newDate?: Date) => {
+    console.log("[AgeVerification] Date picker changed:", event.type, newDate);
+    
     if (Platform.OS === "android") {
       setShowDatePicker(false);
     }
     
-    if (selectedDate) {
-      setBirthDate(selectedDate);
+    if (event.type === "set" && newDate) {
+      setSelectedDate(newDate);
       setError("");
+      console.log("[AgeVerification] New date selected:", newDate, "age:", calculateAge(newDate));
     }
   };
 
-  const ageDisplay = calculateAge(birthDate);
-  const dateDisplay = birthDate.toLocaleDateString();
+  const currentAge = calculateAge(selectedDate);
+  const formattedDate = selectedDate.toLocaleDateString();
 
   // Date limits
   const today = new Date();
@@ -152,13 +157,13 @@ export default function AgeVerificationScreen() {
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={styles.dateButtonText}>{dateDisplay}</Text>
+                <Text style={styles.dateButtonText}>{formattedDate}</Text>
               </TouchableOpacity>
             )}
 
             {showDatePicker && (
               <DateTimePicker
-                value={birthDate}
+                value={selectedDate}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDateChange}
@@ -170,10 +175,10 @@ export default function AgeVerificationScreen() {
 
             <View style={styles.ageDisplay}>
               <Text style={styles.ageLabel}>Your age:</Text>
-              <Text style={styles.ageValue}>{ageDisplay} years old</Text>
+              <Text style={styles.ageValue}>{currentAge} years old</Text>
             </View>
 
-            {ageDisplay < 18 && (
+            {currentAge < 18 && (
               <Text style={styles.warningText}>
                 You must be at least 18 years old to use this app.
               </Text>
@@ -181,9 +186,9 @@ export default function AgeVerificationScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, (loading || ageDisplay < 18) && styles.buttonDisabled]}
+            style={[styles.primaryButton, (loading || currentAge < 18) && styles.buttonDisabled]}
             onPress={handleVerifyAge}
-            disabled={loading || ageDisplay < 18}
+            disabled={loading || currentAge < 18}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />

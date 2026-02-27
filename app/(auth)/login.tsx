@@ -47,9 +47,11 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      console.log("[Login] Resending verification email to:", email);
       const result = await resendVerificationEmail(email);
       showAlert("Success", result.message || "Verification email sent! Check your inbox and spam folder.");
     } catch (err: any) {
+      console.error("[Login] Resend verification error:", err);
       showAlert("Error", err.message || "Failed to resend verification email");
     } finally {
       setLoading(false);
@@ -67,11 +69,12 @@ export default function LoginScreen() {
     setError("");
     setShowResendButton(false);
     try {
+      console.log("[Login] Attempting login for:", email);
       await signInWithEmail(email, password);
       console.log("[Login] Sign in successful, AuthBootstrapGuard will handle redirect");
       // AuthBootstrapGuard in _layout.tsx will handle the redirect based on ageVerified status
     } catch (err: any) {
-      console.error("[Login] Error:", err);
+      console.error("[Login] Login error:", err);
       const message = err?.message || "Login failed";
       
       // Check for email verification errors
@@ -81,6 +84,7 @@ export default function LoginScreen() {
         message.toLowerCase().includes("email not verified") ||
         message.toLowerCase().includes("check spam")
       ) {
+        console.log("[Login] Email verification error detected");
         setError("Please verify your email first (check spam/junk folder)");
         setShowResendButton(true);
       } else if (
@@ -89,9 +93,11 @@ export default function LoginScreen() {
         message.toLowerCase().includes("password") ||
         message.toLowerCase().includes("not found")
       ) {
+        console.log("[Login] Invalid credentials error");
         setError("Invalid email or password. Please try again.");
         setShowResendButton(false);
       } else {
+        console.log("[Login] Other error:", message);
         setError(message);
         setShowResendButton(false);
       }
@@ -105,6 +111,7 @@ export default function LoginScreen() {
     setError("");
     setShowResendButton(false);
     try {
+      console.log("[Login] Attempting social auth with:", provider);
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
