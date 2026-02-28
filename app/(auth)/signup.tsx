@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -86,7 +85,7 @@ export default function SignupScreen() {
       }
     } catch (err: any) {
       console.error("[Signup] Error:", err);
-      const message = err?.message || "Sign up failed";
+      const message = err.message || "Sign up failed";
       
       if (message.toLowerCase().includes("already exists") || message.toLowerCase().includes("duplicate")) {
         setError("An account with this email already exists. Please log in instead.");
@@ -104,16 +103,21 @@ export default function SignupScreen() {
     setShowSuccessMessage(false);
     try {
       console.log(`[Signup] Attempting ${provider} sign in...`);
+      let result;
       if (provider === "google") {
-        await signInWithGoogle();
+        result = await signInWithGoogle();
       } else if (provider === "apple") {
-        await signInWithApple();
+        result = await signInWithApple();
       }
-      console.log(`[Signup] ${provider} sign in successful, AuthContext will handle redirect`);
-      // AuthBootstrapGuard in _layout.tsx will handle the redirect
+      if (result?.success) {
+        console.log(`[Signup] ${provider} sign in successful`);
+        // AuthContext will handle redirect
+      } else {
+        throw new Error(result?.message || "Authentication failed");
+      }
     } catch (err: any) {
       console.error("[Signup] Social auth error:", err);
-      setError(err.message || "Authentication failed");
+      setError(err.message || "Authentication failed — please try again");
     } finally {
       setLoading(false);
     }
