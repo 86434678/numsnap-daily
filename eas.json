@@ -13,10 +13,6 @@
         "simulator": false,
         "buildConfiguration": "Debug"
       },
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug"
-      },
       "env": {
         "EXPO_PUBLIC_ENV": "development"
       }
@@ -24,16 +20,10 @@
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "credentialsSource": "remote",
-      "env": {
-        "EXPO_PUBLIC_ENV": "preview"
-      }
+      "credentialsSource": "remote"
     },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_ENV": "production"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
