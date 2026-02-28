@@ -29,7 +29,7 @@ function ConfettiPiece({ x, delay, color, size }: ConfettiPieceProps) {
     translateX.value = withDelay(delay, withTiming((Math.random() - 0.5) * 200, { duration: 3000 }));
     rotate.value = withDelay(delay, withTiming(Math.random() * 720, { duration: 3000 }));
     opacity.value = withDelay(delay + 2000, withTiming(0, { duration: 1000 }));
-  }, []);
+  }, [delay, opacity, rotate, translateX, translateY]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [

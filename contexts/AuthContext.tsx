@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
@@ -175,27 +175,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ageVerified, setAgeVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
 
-  useEffect(() => {
-    initializeAuth();
-
-    const subscription = Linking.addEventListener("url", async (event) => {
-      console.log("[AuthContext] Deep link received:", event.url);
-      const url = Linking.parse(event.url);
-      if (url.path === "verify" && url.queryParams?.token) {
-        console.log("[AuthContext] Email verification deep link detected");
-        await handleDeepLinkVerification(url.queryParams.token as string);
-      } else {
-        console.log("[AuthContext] Other deep link, refreshing user session");
-        fetchUser();
+  const handleDeepLinkVerification = useCallback(async (token: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log("[AuthContext] Verifying email with token...");
+      
+      const response = await apiGet<{ success: boolean; message: string }>(`/api/verify?token=${token}`);
+      
+      if (response.success) {
+        await fetchUser();
       }
-    });
-
-    return () => {
-      subscription.remove();
-    };
+      
+      return response;
+    } catch (error: any) {
+      console.error("[AuthContext] Email verification failed:", error);
+      return {
+        success: false,
+        message: error?.message || "Email verification failed",
+      };
+    }
   }, []);
 
-  const initializeAuth = async () => {
+  const initializeAuth = useCallback(async () => {
     try {
       setLoading(true);
       console.log("[AuthContext] Initializing auth state...");
@@ -219,7 +219,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    initializeAuth();
+
+    const subscription = Linking.addEventListener("url", async (event) => {
+      console.log("[AuthContext] Deep link received:", event.url);
+      const url = Linking.parse(event.url);
+      if (url.path === "verify" && url.queryParams?.token) {
+        console.log("[AuthContext] Email verification deep link detected");
+        await handleDeepLinkVerification(url.queryParams.token as string);
+      } else {
+        console.log("[AuthContext] Other deep link, refreshing user session");
+        fetchUser();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleDeepLinkVerification, initializeAuth]);
 
   const fetchUser = async () => {
     try {
@@ -459,26 +479,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {
         success: false,
         message: error?.message || "Failed to resend verification email",
-      };
-    }
-  };
-
-  const handleDeepLinkVerification = async (token: string): Promise<{ success: boolean; message: string }> => {
-    try {
-      console.log("[AuthContext] Verifying email with token...");
-      
-      const response = await apiGet<{ success: boolean; message: string }>(`/api/verify?token=${token}`);
-      
-      if (response.success) {
-        await fetchUser();
-      }
-      
-      return response;
-    } catch (error: any) {
-      console.error("[AuthContext] Email verification failed:", error);
-      return {
-        success: false,
-        message: error?.message || "Email verification failed",
       };
     }
   };

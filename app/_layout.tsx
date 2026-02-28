@@ -1,6 +1,6 @@
 
 import "react-native-reanimated";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -70,13 +70,13 @@ function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
     };
 
     handleInitialURL();
-  }, []);
+  }, [handleDeepLinkVerification]);
 
-  const hideVerificationModal = () => {
+  const hideVerificationModal = useCallback(() => {
     setVerificationModal({ visible: false, title: "", message: "" });
     // Redirect to login after verification
     router.replace("/(auth)/login");
-  };
+  }, [router]);
 
   useEffect(() => {
     if (loading) return; // Still checking session — wait
@@ -98,7 +98,7 @@ function AuthBootstrapGuard({ children }: { children: React.ReactNode }) {
       console.log("[AuthBootstrap] User authenticated and age verified, redirecting to home");
       router.replace("/(tabs)/(home)/");
     }
-  }, [user, loading, ageVerified, segments]);
+  }, [user, loading, ageVerified, segments, router]);
 
   if (loading) {
     return (

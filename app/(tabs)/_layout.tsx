@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 import { authenticatedGet } from '@/utils/api';
@@ -10,11 +10,7 @@ export default function TabLayout() {
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    checkAdminStatus();
-  }, [user]);
-
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     if (!user) {
       setIsAdmin(false);
       setCheckingAdmin(false);
@@ -30,7 +26,11 @@ export default function TabLayout() {
     } finally {
       setCheckingAdmin(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [user, checkAdminStatus]);
 
   // Define the tabs configuration
   const tabs: TabBarItem[] = [

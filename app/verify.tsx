@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,36 +12,36 @@ export default function VerifyScreen() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
+  const verifyEmail = useCallback(async () => {
+    if (!token) {
+      console.log("[Verify] No token provided");
+      setStatus("error");
+      setMessage("Invalid verification link");
+      setTimeout(() => router.replace("/(auth)/login"), 3000);
+      return;
+    }
+
+    try {
+      console.log("[Verify] Verifying email with token:", token);
+      const result = await handleDeepLinkVerification(token);
+      console.log("[Verify] Verification successful:", result);
+      setStatus("success");
+      setMessage(result.message || "Email verified successfully! Please log in.");
+      setTimeout(() => {
+        console.log("[Verify] Redirecting to login screen");
+        router.replace("/(auth)/login");
+      }, 2000);
+    } catch (error: any) {
+      console.error("[Verify] Verification failed:", error);
+      setStatus("error");
+      setMessage(error.message || "Verification failed. Please try again.");
+      setTimeout(() => router.replace("/(auth)/login"), 3000);
+    }
+  }, [token, handleDeepLinkVerification, router]);
+
   useEffect(() => {
-    const verifyEmail = async () => {
-      if (!token) {
-        console.log("[Verify] No token provided");
-        setStatus("error");
-        setMessage("Invalid verification link");
-        setTimeout(() => router.replace("/(auth)/login"), 3000);
-        return;
-      }
-
-      try {
-        console.log("[Verify] Verifying email with token:", token);
-        const result = await handleDeepLinkVerification(token);
-        console.log("[Verify] Verification successful:", result);
-        setStatus("success");
-        setMessage(result.message || "Email verified successfully! Please log in.");
-        setTimeout(() => {
-          console.log("[Verify] Redirecting to login screen");
-          router.replace("/(auth)/login");
-        }, 2000);
-      } catch (error: any) {
-        console.error("[Verify] Verification failed:", error);
-        setStatus("error");
-        setMessage(error.message || "Verification failed. Please try again.");
-        setTimeout(() => router.replace("/(auth)/login"), 3000);
-      }
-    };
-
     verifyEmail();
-  }, [token]);
+  }, [verifyEmail]);
 
   return (
     <LinearGradient

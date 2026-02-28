@@ -1,12 +1,12 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, ActivityIndicator, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { authenticatedGet } from '@/utils/api';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing, runOnJS } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CONFETTI_COLORS = ['#FFD700', '#FF6B9D', '#00FF7F', '#4A90E2', '#9B59B6', '#FF4500', '#00BFFF'];
@@ -29,7 +29,7 @@ function ConfettiPiece({ x, delay, color, size }: ConfettiPieceProps) {
     translateX.value = withDelay(delay, withTiming((Math.random() - 0.5) * 200, { duration: 3000 }));
     rotate.value = withDelay(delay, withTiming(Math.random() * 720, { duration: 3000 }));
     opacity.value = withDelay(delay + 2000, withTiming(0, { duration: 1000 }));
-  }, []);
+  }, [delay, opacity, rotate, translateX, translateY]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [
@@ -105,16 +105,27 @@ export default function RevealResultScreen() {
     // If revealData was passed as params from confirm-submission, use it directly
     if (params.isMatch !== undefined && params.userNumber && params.targetNumber && params.submissionTime && params.userName) {
       console.log('RevealResultScreen: Using revealData from params');
+      
+      const isMatch = params.isMatch === 'true';
+      const userNumber = parseInt(params.userNumber as string, 10);
+      const targetNumber = params.targetNumber as string;
+      const submissionTime = params.submissionTime as string;
+      const userName = params.userName as string;
+      const submissionId = params.submissionId as string || '';
+      const photoUrl = params.photoUrl as string;
+      const location = params.location ? JSON.parse(params.location as string) : undefined;
+      const isManualEntry = params.isManualEntry === 'true';
+      
       setRevealData({
-        isMatch: params.isMatch === 'true',
-        userNumber: parseInt(params.userNumber as string, 10),
-        targetNumber: params.targetNumber as string,
-        submissionTime: params.submissionTime as string,
-        userName: params.userName as string,
-        submissionId: params.submissionId as string || '',
-        photoUrl: params.photoUrl as string,
-        location: params.location ? JSON.parse(params.location as string) : undefined,
-        isManualEntry: params.isManualEntry === 'true',
+        isMatch,
+        userNumber,
+        targetNumber,
+        submissionTime,
+        userName,
+        submissionId,
+        photoUrl,
+        location,
+        isManualEntry,
       });
       setLoading(false);
     } else {

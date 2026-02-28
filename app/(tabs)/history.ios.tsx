@@ -32,7 +32,7 @@ export default function HistoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchHistory = async (isRefresh = false) => {
+  const fetchHistory = useCallback(async (isRefresh = false) => {
     if (!user) return;
     
     console.log('[History] Fetching history entries...');
@@ -51,12 +51,12 @@ export default function HistoryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
       fetchHistory();
-    }, [user])
+    }, [fetchHistory])
   );
 
   const handleRefresh = () => {

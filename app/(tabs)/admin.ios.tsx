@@ -325,13 +325,17 @@ export default function AdminScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  useFocusEffect(
-    useCallback(() => {
-      checkAdminAccess();
-    }, [])
-  );
+  const fetchWinners = useCallback(async () => {
+    try {
+      const data = await authenticatedGet('/api/admin/winners');
+      setWinners(data);
+    } catch (err: any) {
+      console.error('Failed to fetch winners:', err);
+      setError('Failed to load winners data');
+    }
+  }, []);
 
-  const checkAdminAccess = async () => {
+  const checkAdminAccess = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -356,17 +360,13 @@ export default function AdminScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, fetchWinners]);
 
-  const fetchWinners = async () => {
-    try {
-      const data = await authenticatedGet('/api/admin/winners');
-      setWinners(data);
-    } catch (err: any) {
-      console.error('Failed to fetch winners:', err);
-      setError('Failed to load winners data');
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      checkAdminAccess();
+    }, [checkAdminAccess])
+  );
 
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();

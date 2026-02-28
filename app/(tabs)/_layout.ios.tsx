@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { authenticatedGet } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +9,7 @@ export default function TabLayout() {
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    checkAdminStatus();
-  }, [user]);
-
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     if (!user) {
       setIsAdmin(false);
       setCheckingAdmin(false);
@@ -29,7 +25,11 @@ export default function TabLayout() {
     } finally {
       setCheckingAdmin(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [user, checkAdminStatus]);
 
   return (
     <NativeTabs>
