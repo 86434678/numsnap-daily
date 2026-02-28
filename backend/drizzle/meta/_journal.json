@@ -43,6 +43,13 @@
       "when": 1772079249885,
       "tag": "20260226041409_daffy_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772296450806,
+      "tag": "20260228163410_dear_sentry",
+      "breakpoints": true
     }
   ]
 }

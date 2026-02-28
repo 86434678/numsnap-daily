@@ -168,4 +168,64 @@ export function registerDebugRoutes(app: App) {
       throw error;
     }
   });
+
+  // POST /api/debug/mark-verified - Mark a user's email as verified (debug only, for testing)
+  app.fastify.post<{ Body: { userId: string } }>('/api/debug/mark-verified', {
+    schema: {
+      description: 'Mark a user as email verified (debug only, for testing)',
+      tags: ['debug'],
+      body: {
+        type: 'object',
+        required: ['userId'],
+        properties: {
+          userId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            userId: { type: 'string' },
+            emailVerified: { type: 'boolean' },
+          },
+        },
+        404: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+  }, async (request: FastifyRequest<{ Body: { userId: string } }>, reply: FastifyReply): Promise<{ success: boolean; userId: string; emailVerified: boolean } | void> => {
+    const { userId } = request.body;
+
+    app.logger.info({ userId }, 'Attempting to mark user email as verified (debug)');
+
+    try {
+      const user = await app.db.query.user.findFirst({
+        where: eq(authSchema.user.id, userId),
+      });
+
+      if (!user) {
+        app.logger.warn({ userId }, 'User not found for verification');
+        return reply.status(404).send({ error: 'User not found' });
+      }
+
+      await app.db
+        .update(authSchema.user)
+        .set({ emailVerified: true })
+        .where(eq(authSchema.user.id, userId));
+
+      app.logger.info({ userId }, 'User email marked as verified (debug)');
+
+      return {
+        success: true,
+        userId: String(user.id),
+        emailVerified: true,
+      };
+    } catch (error) {
+      app.logger.error({ err: error, userId }, 'Failed to mark user as verified');
+      throw error;
+    }
+  });
 }

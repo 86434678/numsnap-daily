@@ -61,32 +61,90 @@ export interface TestUser {
 
 /**
  * Sign up a test user and return the token and user object.
+ * This handles the full auth flow: signup -> verify email -> login
  */
 export async function signUpTestUser(): Promise<TestUser> {
   const id = crypto.randomUUID();
-  const res = await api("/api/auth/sign-up/email", {
+  const email = `testuser+${id}@example.com`;
+  const password = "TestPassword123!";
+
+  // Step 1: Sign up
+  const signupRes = await api("/api/auth/sign-up/email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "Test User",
-      email: `testuser+${id}@example.com`,
-      password: "TestPassword123!",
+      email,
+      password,
     }),
   });
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Failed to sign up test user (${res.status}): ${body}`);
+  if (!signupRes.ok) {
+    const body = await signupRes.text();
+    throw new Error(`Failed to sign up test user (${signupRes.status}): ${body}`);
   }
 
-  const data = (await res.json()) as TestUser;
+  const signupData = (await signupRes.json()) as any;
+  const userId = signupData.user?.id || signupData.id;
+
+  if (!userId) {
+    throw new Error(`Failed to extract user ID from signup response: ${JSON.stringify(signupData)}`);
+  }
+
+  // Step 2: Auto-verify email (in test environment, we bypass verification)
+  // Try to mark the user as verified via the debug endpoint if it exists
+  try {
+    await api("/api/debug/mark-verified", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+  } catch (error) {
+    console.warn("Could not auto-verify email (debug endpoint may not exist):", error);
+  }
+
+  // Step 3: Login to get a valid session token
+  const loginRes = await api("/api/auth/sign-in/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  if (!loginRes.ok) {
+    const body = await loginRes.text();
+    throw new Error(`Failed to login test user (${loginRes.status}): ${body}`);
+  }
+
+  const loginData = (await loginRes.json()) as any;
+
+  // Extract token from login response
+  let token = loginData.session?.token || loginData.token;
+  if (!token) {
+    throw new Error(`Failed to extract token from login response: ${JSON.stringify(loginData)}`);
+  }
+
+  const testUser: TestUser = {
+    token,
+    user: {
+      id: userId,
+      name: signupData.user?.name || "Test User",
+      email: signupData.user?.email || email,
+      emailVerified: signupData.user?.emailVerified !== false,
+      image: signupData.user?.image || null,
+      createdAt: signupData.user?.createdAt || new Date().toISOString(),
+      updatedAt: signupData.user?.updatedAt || new Date().toISOString(),
+    },
+  };
 
   // Auto-register cleanup so the test file doesn't need to
   afterAll(async () => {
-    await deleteTestUser(data.token);
+    await deleteTestUser(testUser.token);
   });
 
-  return data;
+  return testUser;
 }
 
 /**
