@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useTheme, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/contexts/AuthContext";
@@ -254,11 +255,16 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.gradient}
+      >
+        <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -268,269 +274,277 @@ export default function ProfileScreen() {
   const winsDisplay = stats?.totalWins || 0;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background, paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.content,
-          Platform.OS !== 'ios' && styles.contentWithTabBar
-        ]}
-      >
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <IconSymbol 
-              ios_icon_name="person.circle.fill" 
-              android_material_icon_name="account-circle" 
-              size={80} 
-              color={colors.primary} 
-            />
+    <LinearGradient
+      colors={[colors.gradientStart, colors.gradientEnd]}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.content,
+            Platform.OS !== 'ios' && styles.contentWithTabBar
+          ]}
+        >
+          <View style={styles.header}>
+            <View style={styles.avatarContainer}>
+              <IconSymbol 
+                ios_icon_name="person.circle.fill" 
+                android_material_icon_name="account-circle" 
+                size={80} 
+                color="#FFFFFF" 
+              />
+            </View>
+            <Text style={styles.email}>{user?.email}</Text>
           </View>
-          <Text style={[styles.email, { color: themeColors.text }]}>{user?.email}</Text>
-        </View>
 
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <IconSymbol 
-              ios_icon_name="flame.fill" 
-              android_material_icon_name="local-fire-department" 
-              size={32} 
-              color={colors.warning} 
-            />
-            <Text style={[styles.statValue, { color: themeColors.text }]}>{streakDisplay}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Current Streak</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <IconSymbol 
-              ios_icon_name="star.fill" 
-              android_material_icon_name="star" 
-              size={32} 
-              color={colors.primary} 
-            />
-            <Text style={[styles.statValue, { color: themeColors.text }]}>{longestStreakDisplay}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Longest Streak</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <IconSymbol 
-              ios_icon_name="photo.fill" 
-              android_material_icon_name="photo-camera" 
-              size={32} 
-              color={colors.secondary} 
-            />
-            <Text style={[styles.statValue, { color: themeColors.text }]}>{submissionsDisplay}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Snaps</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-            <IconSymbol 
-              ios_icon_name="trophy.fill" 
-              android_material_icon_name="emoji-events" 
-              size={32} 
-              color={colors.success} 
-            />
-            <Text style={[styles.statValue, { color: themeColors.text }]}>{winsDisplay}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Wins</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Submission History</Text>
-          {submissions.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: colors.card }]}>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="flame.fill" 
+                android_material_icon_name="local-fire-department" 
+                size={32} 
+                color={colors.warning} 
+              />
+              <Text style={styles.statValue}>{streakDisplay}</Text>
+              <Text style={styles.statLabel}>Current Streak</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="star.fill" 
+                android_material_icon_name="star" 
+                size={32} 
+                color={colors.primary} 
+              />
+              <Text style={styles.statValue}>{longestStreakDisplay}</Text>
+              <Text style={styles.statLabel}>Longest Streak</Text>
+            </View>
+            
+            <View style={styles.statCard}>
               <IconSymbol 
                 ios_icon_name="photo.fill" 
                 android_material_icon_name="photo-camera" 
-                size={48} 
-                color={colors.textSecondary} 
+                size={32} 
+                color={colors.secondary} 
               />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No submissions yet
-              </Text>
-              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                Start snapping numbers to see your history!
-              </Text>
+              <Text style={styles.statValue}>{submissionsDisplay}</Text>
+              <Text style={styles.statLabel}>Total Snaps</Text>
             </View>
-          ) : (
-            <React.Fragment>
-              {submissions.map((submission, index) => {
-                const revealed = isTargetRevealed(submission);
-                const userNumberDisplay = String(submission.confirmedNumber).padStart(6, '0');
-                const targetDisplay = revealed 
-                  ? String(submission.targetNumber).padStart(6, '0')
-                  : '••••••';
-                const targetLabelDisplay = revealed ? 'Target' : 'Target (Hidden)';
-                
-                return (
-                  <View key={index} style={[styles.submissionCard, { backgroundColor: colors.card }]}>
-                    <Image source={{ uri: submission.photoUrl }} style={styles.submissionImage} />
-                    <View style={styles.submissionInfo}>
-                      <Text style={[styles.submissionDate, { color: themeColors.text }]}>
-                        {new Date(submission.date).toLocaleDateString()}
-                      </Text>
-                      <Text style={[styles.submissionNumber, { color: colors.textSecondary }]}>
-                        Your number: {userNumberDisplay}
-                      </Text>
-                      <Text style={[styles.submissionTarget, { color: colors.textSecondary }]}>
-                        {targetLabelDisplay}: {targetDisplay}
-                      </Text>
-                      {!revealed && (
-                        <Text style={[styles.revealHint, { color: colors.warning }]}>
-                          Reveals at 11:59 PM PST
-                        </Text>
-                      )}
-                      {submission.isWinner && (
-                        <View style={styles.winnerBadge}>
-                          <IconSymbol 
-                            ios_icon_name="trophy.fill" 
-                            android_material_icon_name="emoji-events" 
-                            size={16} 
-                            color={colors.success} 
-                          />
-                          <Text style={[styles.winnerText, { color: colors.success }]}>Winner!</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-            </React.Fragment>
-          )}
-        </View>
+            
+            <View style={styles.statCard}>
+              <IconSymbol 
+                ios_icon_name="trophy.fill" 
+                android_material_icon_name="emoji-events" 
+                size={32} 
+                color={colors.success} 
+              />
+              <Text style={styles.statValue}>{winsDisplay}</Text>
+              <Text style={styles.statLabel}>Total Wins</Text>
+            </View>
+          </View>
 
-        {/* Eligible Prizes Section */}
-        {(eligiblePrizes.length > 0 || loadingPrizes) && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>🏆 Unclaimed Prizes</Text>
-            {loadingPrizes ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.sectionTitle}>Submission History</Text>
+            {submissions.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <IconSymbol 
+                  ios_icon_name="photo.fill" 
+                  android_material_icon_name="photo-camera" 
+                  size={48} 
+                  color="rgba(255, 255, 255, 0.6)" 
+                />
+                <Text style={styles.emptyText}>
+                  No submissions yet
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  Start snapping numbers to see your history!
+                </Text>
+              </View>
             ) : (
-              eligiblePrizes.map((prize, index) => {
-                const daysLeft = getDaysUntilDeadline(prize.claimDeadline);
-                return (
-                  <View key={index} style={[styles.prizeEligibleCard, { backgroundColor: '#FFF9E6', borderColor: colors.primary }]}>
-                    <View style={styles.prizeEligibleHeader}>
-                      <IconSymbol
-                        ios_icon_name="trophy.fill"
-                        android_material_icon_name="emoji-events"
-                        size={28}
-                        color={colors.primary}
-                      />
-                      <View style={styles.prizeEligibleInfo}>
-                        <Text style={[styles.prizeEligibleTitle, { color: colors.text }]}>
-                          You won $25!
+              <React.Fragment>
+                {submissions.map((submission, index) => {
+                  const revealed = isTargetRevealed(submission);
+                  const userNumberDisplay = String(submission.confirmedNumber).padStart(6, '0');
+                  const targetDisplay = revealed 
+                    ? String(submission.targetNumber).padStart(6, '0')
+                    : '••••••';
+                  const targetLabelDisplay = revealed ? 'Target' : 'Target (Hidden)';
+                  
+                  return (
+                    <View key={index} style={styles.submissionCard}>
+                      <Image source={{ uri: submission.photoUrl }} style={styles.submissionImage} />
+                      <View style={styles.submissionInfo}>
+                        <Text style={styles.submissionDate}>
+                          {new Date(submission.date).toLocaleDateString()}
                         </Text>
-                        <Text style={[styles.prizeEligibleDate, { color: colors.textSecondary }]}>
-                          {new Date(prize.date).toLocaleDateString()} · Number: {String(prize.winningNumber).padStart(6, '0')}
+                        <Text style={styles.submissionNumber}>
+                          Your number: {userNumberDisplay}
                         </Text>
-                        <Text style={[styles.prizeDeadline, { color: daysLeft <= 7 ? colors.error : colors.warning }]}>
-                          ⏰ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left to claim
+                        <Text style={styles.submissionTarget}>
+                          {targetLabelDisplay}: {targetDisplay}
                         </Text>
+                        {!revealed && (
+                          <Text style={styles.revealHint}>
+                            Reveals at 11:59 PM PST
+                          </Text>
+                        )}
+                        {submission.isWinner && (
+                          <View style={styles.winnerBadge}>
+                            <IconSymbol 
+                              ios_icon_name="trophy.fill" 
+                              android_material_icon_name="emoji-events" 
+                              size={16} 
+                              color={colors.success} 
+                            />
+                            <Text style={styles.winnerText}>Winner!</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
-                    {prize.canClaim && (
-                      <TouchableOpacity
-                        style={styles.claimNowButton}
-                        onPress={() => {
-                          console.log('ProfileScreen: Navigating to claim prize for submission:', prize.submissionId);
-                          router.push({
-                            pathname: '/claim-prize',
-                            params: {
-                              submissionId: prize.submissionId,
-                              winningNumber: String(prize.winningNumber),
-                              prizeAmount: String(prize.prizeAmount),
-                            },
-                          });
-                        }}
-                      >
-                        <Text style={styles.claimNowButtonText}>Claim Prize →</Text>
-                      </TouchableOpacity>
-                    )}
-                    {!prize.canClaim && (
-                      <Text style={[styles.alreadyClaimedText, { color: colors.textSecondary }]}>
-                        Already claimed
-                      </Text>
-                    )}
-                  </View>
-                );
-              })
+                  );
+                })}
+              </React.Fragment>
             )}
           </View>
-        )}
 
-        {/* Prize Claims History Section */}
-        {prizeClaims.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Prize Claims</Text>
-            {prizeClaims.map((claim, index) => (
-              <View key={index} style={[styles.prizeClaimCard, { backgroundColor: colors.card }]}>
-                <View style={styles.prizeClaimHeader}>
-                  <View style={styles.prizeClaimLeft}>
-                    <Text style={[styles.prizeClaimAmount, { color: themeColors.text }]}>$25 Prize</Text>
-                    <Text style={[styles.prizeClaimDate, { color: colors.textSecondary }]}>
-                      Won: {new Date(claim.date).toLocaleDateString()}
-                    </Text>
-                    <Text style={[styles.prizeClaimMethod, { color: colors.textSecondary }]}>
-                      Via: {getPaymentMethodLabel(claim.paymentMethod)}
-                    </Text>
-                    <Text style={[styles.prizeClaimSubmitted, { color: colors.textSecondary }]}>
-                      Claimed: {new Date(claim.claimedAt).toLocaleDateString()}
-                    </Text>
-                    {claim.processedAt && (
-                      <Text style={[styles.prizeClaimProcessed, { color: colors.success }]}>
-                        Processed: {new Date(claim.processedAt).toLocaleDateString()}
+          {/* Eligible Prizes Section */}
+          {(eligiblePrizes.length > 0 || loadingPrizes) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🏆 Unclaimed Prizes</Text>
+              {loadingPrizes ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                eligiblePrizes.map((prize, index) => {
+                  const daysLeft = getDaysUntilDeadline(prize.claimDeadline);
+                  return (
+                    <View key={index} style={styles.prizeEligibleCard}>
+                      <View style={styles.prizeEligibleHeader}>
+                        <IconSymbol
+                          ios_icon_name="trophy.fill"
+                          android_material_icon_name="emoji-events"
+                          size={28}
+                          color={colors.primary}
+                        />
+                        <View style={styles.prizeEligibleInfo}>
+                          <Text style={styles.prizeEligibleTitle}>
+                            You won $25!
+                          </Text>
+                          <Text style={styles.prizeEligibleDate}>
+                            {new Date(prize.date).toLocaleDateString()} · Number: {String(prize.winningNumber).padStart(6, '0')}
+                          </Text>
+                          <Text style={[styles.prizeDeadline, { color: daysLeft <= 7 ? colors.error : colors.warning }]}>
+                            ⏰ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left to claim
+                          </Text>
+                        </View>
+                      </View>
+                      {prize.canClaim && (
+                        <TouchableOpacity
+                          style={styles.claimNowButton}
+                          onPress={() => {
+                            console.log('ProfileScreen: Navigating to claim prize for submission:', prize.submissionId);
+                            router.push({
+                              pathname: '/claim-prize',
+                              params: {
+                                submissionId: prize.submissionId,
+                                winningNumber: String(prize.winningNumber),
+                                prizeAmount: String(prize.prizeAmount),
+                              },
+                            });
+                          }}
+                        >
+                          <Text style={styles.claimNowButtonText}>Claim Prize →</Text>
+                        </TouchableOpacity>
+                      )}
+                      {!prize.canClaim && (
+                        <Text style={styles.alreadyClaimedText}>
+                          Already claimed
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+
+          {/* Prize Claims History Section */}
+          {prizeClaims.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Prize Claims</Text>
+              {prizeClaims.map((claim, index) => (
+                <View key={index} style={styles.prizeClaimCard}>
+                  <View style={styles.prizeClaimHeader}>
+                    <View style={styles.prizeClaimLeft}>
+                      <Text style={styles.prizeClaimAmount}>$25 Prize</Text>
+                      <Text style={styles.prizeClaimDate}>
+                        Won: {new Date(claim.date).toLocaleDateString()}
                       </Text>
-                    )}
-                  </View>
-                  <View style={[styles.claimStatusBadge, { backgroundColor: getClaimStatusColor(claim.claimStatus) + '20', borderColor: getClaimStatusColor(claim.claimStatus) }]}>
-                    <Text style={[styles.claimStatusText, { color: getClaimStatusColor(claim.claimStatus) }]}>
-                      {getClaimStatusLabel(claim.claimStatus)}
-                    </Text>
+                      <Text style={styles.prizeClaimMethod}>
+                        Via: {getPaymentMethodLabel(claim.paymentMethod)}
+                      </Text>
+                      <Text style={styles.prizeClaimSubmitted}>
+                        Claimed: {new Date(claim.claimedAt).toLocaleDateString()}
+                      </Text>
+                      {claim.processedAt && (
+                        <Text style={styles.prizeClaimProcessed}>
+                          Processed: {new Date(claim.processedAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[styles.claimStatusBadge, { backgroundColor: getClaimStatusColor(claim.claimStatus) + '20', borderColor: getClaimStatusColor(claim.claimStatus) }]}>
+                      <Text style={[styles.claimStatusText, { color: getClaimStatusColor(claim.claimStatus) }]}>
+                        {getClaimStatusLabel(claim.claimStatus)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <IconSymbol 
+              ios_icon_name="arrow.right.square.fill" 
+              android_material_icon_name="logout" 
+              size={20} 
+              color={colors.error} 
+            />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <Modal
+          visible={showSignOutModal}
+          transparent
+          animationType="fade"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Sign Out?</Text>
+              <Text style={styles.modalSubtitle}>
+                Are you sure you want to sign out?
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={cancelSignOut}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalButton, styles.confirmButton]} onPress={confirmSignOut}>
+                  <Text style={styles.confirmButtonText}>Sign Out</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <IconSymbol 
-            ios_icon_name="arrow.right.square.fill" 
-            android_material_icon_name="logout" 
-            size={20} 
-            color={colors.error} 
-          />
-          <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      <Modal
-        visible={showSignOutModal}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Sign Out?</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Are you sure you want to sign out?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={cancelSignOut}>
-                <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.confirmButton]} onPress={confirmSignOut}>
-                <Text style={styles.confirmButtonText}>Sign Out</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -558,6 +572,7 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -571,6 +586,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -581,11 +597,13 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginTop: 10,
+    color: colors.text,
   },
   statLabel: {
     fontSize: 12,
     marginTop: 5,
     textAlign: 'center',
+    color: colors.textSecondary,
   },
   section: {
     marginBottom: 30,
@@ -594,27 +612,32 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 15,
+    color: '#FFFFFF',
   },
   emptyCard: {
     borderRadius: 15,
     padding: 40,
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
     marginTop: 15,
+    color: '#FFFFFF',
   },
   emptySubtext: {
     fontSize: 14,
     marginTop: 5,
     textAlign: 'center',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   submissionCard: {
     flexDirection: 'row',
     borderRadius: 15,
     padding: 15,
     marginBottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -635,19 +658,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
+    color: colors.text,
   },
   submissionNumber: {
     fontSize: 14,
     marginBottom: 3,
+    color: colors.textSecondary,
   },
   submissionTarget: {
     fontSize: 14,
     marginBottom: 3,
+    color: colors.textSecondary,
   },
   revealHint: {
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 2,
+    color: colors.warning,
   },
   winnerBadge: {
     flexDirection: 'row',
@@ -658,6 +685,7 @@ const styles = StyleSheet.create({
   winnerText: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: colors.success,
   },
   signOutButton: {
     flexDirection: 'row',
@@ -669,16 +697,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.error,
     marginBottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   signOutText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: colors.error,
   },
   prizeEligibleCard: {
     borderRadius: 15,
     padding: 16,
     marginBottom: 15,
     borderWidth: 2,
+    backgroundColor: '#FFF9E6',
+    borderColor: colors.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -698,10 +730,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: colors.text,
   },
   prizeEligibleDate: {
     fontSize: 13,
     marginBottom: 4,
+    color: colors.textSecondary,
   },
   prizeDeadline: {
     fontSize: 13,
@@ -715,7 +749,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   claimNowButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -724,11 +758,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 4,
+    color: colors.textSecondary,
   },
   prizeClaimCard: {
     borderRadius: 15,
     padding: 16,
     marginBottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -748,22 +784,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: colors.text,
   },
   prizeClaimDate: {
     fontSize: 13,
     marginBottom: 2,
+    color: colors.textSecondary,
   },
   prizeClaimMethod: {
     fontSize: 13,
     marginBottom: 2,
+    color: colors.textSecondary,
   },
   prizeClaimSubmitted: {
     fontSize: 13,
     marginBottom: 2,
+    color: colors.textSecondary,
   },
   prizeClaimProcessed: {
     fontSize: 13,
     fontWeight: '600',
+    color: colors.success,
   },
   claimStatusBadge: {
     borderRadius: 8,
@@ -793,11 +834,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: colors.text,
   },
   modalSubtitle: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 25,
+    color: colors.textSecondary,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -821,6 +864,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text,
   },
   confirmButtonText: {
     fontSize: 16,

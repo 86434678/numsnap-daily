@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -11,8 +12,10 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import { colors } from "@/styles/commonStyles";
 
 type Mode = "signin" | "signup";
 
@@ -42,9 +45,12 @@ export default function AuthScreen() {
 
   if (authLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.loadingContainer}
+      >
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </LinearGradient>
     );
   }
 
@@ -104,129 +110,144 @@ export default function AuthScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <LinearGradient
+      colors={[colors.gradientStart, colors.gradientEnd]}
+      style={styles.gradient}
     >
-      {/* Alert Modal */}
-      <Modal
-        visible={alertModal.visible}
-        transparent
-        animationType="fade"
-        onRequestClose={hideAlert}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{alertModal.title}</Text>
-            <Text style={styles.modalMessage}>{alertModal.message}</Text>
-            <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
-              <Text style={styles.modalButtonText}>OK</Text>
-            </TouchableOpacity>
+        {/* Alert Modal */}
+        <Modal
+          visible={alertModal.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={hideAlert}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{alertModal.title}</Text>
+              <Text style={styles.modalMessage}>{alertModal.message}</Text>
+              <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text style={styles.title}>
-            {mode === "signin" ? "Sign In" : "Sign Up"}
-          </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            {/* NumSnap Daily Logo */}
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoTitle}>NumSnap</Text>
+              <Text style={styles.logoSubtitle}>Daily</Text>
+            </View>
 
-          {mode === "signup" && (
+            <Text style={styles.title}>
+              {mode === "signin" ? "Sign In" : "Sign Up"}
+            </Text>
+
+            {mode === "signup" && (
+              <TextInput
+                style={styles.input}
+                placeholder="Name (optional)"
+                placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            )}
+
             <TextInput
               style={styles.input}
-              placeholder="Name (optional)"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
+              placeholder="Email"
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-          )}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.buttonDisabled]}
-            onPress={handleEmailAuth}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryButtonText}>
-                {mode === "signin" ? "Sign In" : "Sign Up"}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.switchModeButton}
-            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
-          >
-            <Text style={styles.switchModeText}>
-              {mode === "signin"
-                ? "Don't have an account? Sign Up"
-                : "Already have an account? Sign In"}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.socialButton}
-            onPress={() => handleSocialAuth("google")}
-            disabled={loading}
-          >
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {Platform.OS === "ios" && (
             <TouchableOpacity
-              style={[styles.socialButton, styles.appleButton]}
-              onPress={() => handleSocialAuth("apple")}
+              style={[styles.primaryButton, loading && styles.buttonDisabled]}
+              onPress={handleEmailAuth}
               disabled={loading}
             >
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                Continue with Apple
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>
+                  {mode === "signin" ? "Sign In" : "Sign Up"}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.switchModeButton}
+              onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+            >
+              <Text style={styles.switchModeText}>
+                {mode === "signin"
+                  ? "Don't have an account? Sign Up"
+                  : "Already have an account? Sign In"}
               </Text>
             </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialAuth("google")}
+              disabled={loading}
+            >
+              <Text style={styles.socialButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            {Platform.OS === "ios" && (
+              <TouchableOpacity
+                style={[styles.socialButton, styles.appleButton]}
+                onPress={() => handleSocialAuth("apple")}
+                disabled={loading}
+              >
+                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                  Continue with Apple
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
   },
   scrollContent: {
     flexGrow: 1,
@@ -236,33 +257,52 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: "center",
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoTitle: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textShadowColor: colors.neonGlow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  logoSubtitle: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    marginTop: -8,
+  },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 32,
     textAlign: "center",
-    color: "#000",
+    color: "#FFFFFF",
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "rgba(255, 255, 255, 0.3)",
     borderRadius: 8,
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    color: "#FFFFFF",
   },
   primaryButton: {
     height: 50,
-    backgroundColor: "#007AFF",
+    backgroundColor: colors.primary,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
   },
   primaryButtonText: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -274,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   switchModeText: {
-    color: "#007AFF",
+    color: "#FFFFFF",
     fontSize: 14,
   },
   divider: {
@@ -285,34 +325,34 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#ddd",
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
   },
   dividerText: {
     marginHorizontal: 12,
-    color: "#666",
+    color: "#FFFFFF",
     fontSize: 14,
   },
   socialButton: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "rgba(255, 255, 255, 0.3)",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   socialButtonText: {
     fontSize: 16,
-    color: "#000",
+    color: "#FFFFFF",
     fontWeight: "500",
   },
   appleButton: {
-    backgroundColor: "#000",
-    borderColor: "#000",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   appleButtonText: {
-    color: "#fff",
+    color: "#FFFFFF",
   },
   modalOverlay: {
     flex: 1,
@@ -342,13 +382,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   modalButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 32,
   },
   modalButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
