@@ -8,6 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "autoIncrement": true,
+      "credentialsSource": "remote",
       "ios": {
         "simulator": false,
         "buildConfiguration": "Debug"
@@ -18,29 +19,21 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "development"
-      },
-      "channel": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "ios": {
-        "simulator": false
-      },
-      "android": {
-        "buildType": "apk"
-      },
+      "credentialsSource": "remote",
       "env": {
         "EXPO_PUBLIC_ENV": "preview"
-      },
-      "channel": "preview"
+      }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_ENV": "production"
-      },
-      "channel": "production"
+      }
     }
   },
   "submit": {
