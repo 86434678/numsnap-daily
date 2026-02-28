@@ -279,7 +279,7 @@ export function registerPrizeRoutes(app: App) {
 
       if (!submission) {
         app.logger.warn({ userId, submissionId }, 'Submission not found');
-        return reply.status(400).send({ error: 'Submission not found' });
+        return reply.status(403).send({ error: 'Submission not found' });
       }
 
       if (submission.userId !== userId) {
