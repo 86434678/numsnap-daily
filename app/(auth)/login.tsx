@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -112,19 +111,31 @@ export default function LoginScreen() {
     setShowResendButton(false);
     try {
       console.log("[Login] Attempting social auth with:", provider);
+      let result;
       if (provider === "google") {
-        await signInWithGoogle();
+        result = await signInWithGoogle();
       } else if (provider === "apple") {
-        await signInWithApple();
+        result = await signInWithApple();
       }
-      // AuthBootstrapGuard in _layout.tsx will handle the redirect based on auth state
-      console.log("[Login] Social auth successful, AuthBootstrapGuard will handle redirect");
+      if (result?.success) {
+        console.log("[Login] Social auth successful");
+        // AuthContext will handle redirect
+      } else {
+        throw new Error(result?.message || "Authentication failed");
+      }
     } catch (err: any) {
       console.error("[Login] Social auth error:", err);
-      setError(err.message || "Authentication failed");
+      setError(err.message || "Authentication failed — please try again");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    // Add forgot password navigation or logic here if implemented
+    console.log("[Login] Forgot password clicked");
+    showAlert("Forgot Password", "Password reset link sent to your email if it exists.");
+    // In a full implementation, call a resetPassword function from AuthContext
   };
 
   return (
@@ -217,11 +228,18 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.signupLink}
               onPress={() => router.push("/(auth)/signup")}
             >
               <Text style={styles.signupLinkText}>
-                Don&apos;t have an account? <Text style={styles.signupLinkBold}>Sign Up</Text>
+                Don't have an account? <Text style={styles.signupLinkBold}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
 
@@ -339,6 +357,14 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  forgotLink: {
+    marginTop: 8,
+    alignItems: "flex-end",
+  },
+  forgotText: {
+    color: "#3B82F6",
+    fontSize: 14,
   },
   signupLink: {
     marginTop: 16,
