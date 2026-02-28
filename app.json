@@ -1,14 +1,19 @@
 {
   "expo": {
-    "name": "Natively",
-    "slug": "natively",
+    "name": "NumSnap Daily",
+    "slug": "NumSnap Daily",
     "version": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290",
+      "runtimeVersion": "1.0.0"
+    },
     "orientation": "portrait",
-    "icon": "./assets/images/natively-dark.png",
+    "icon": "./assets/images/app-icon-jte.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/images/natively-dark.png",
+      "image": "./assets/images/app-icon-jte.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -17,17 +22,43 @@
       "bundleIdentifier": "com.kodyfoote.numsnapdaily",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes.",
+        "NSPhotoLibraryUsageDescription": "NumSnap Daily needs access to your photo library to select photos of numbers for the daily sweepstakes.",
+        "NSLocationWhenInUseUsageDescription": "NumSnap Daily needs your location to verify entries and prevent fraud."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/natively-dark.png",
+        "foregroundImage": "./assets/images/app-icon-jte.png",
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.kodyfoote.numsnapdaily",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "numsnapdaily",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
@@ -36,14 +67,28 @@
     "plugins": [
       "expo-font",
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "NumSnap Daily needs access to your photos to select images for the daily sweepstakes.",
+          "cameraPermission": "NumSnap Daily needs access to your camera to take photos of numbers for the daily sweepstakes."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "NumSnap Daily needs your location to verify entries and prevent fraud."
+        }
+      ]
     ],
-    "scheme": "natively",
+    "scheme": "NumSnap Daily",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {},
+      "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
       "eas": {
         "projectId": "db461926-4668-4eed-921a-2a5806c7d290"
       }
