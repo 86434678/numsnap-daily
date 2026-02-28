@@ -63,6 +63,7 @@
       "expo-font",
       "expo-router",
       "expo-web-browser",
+      "expo-updates",
       [
         "expo-image-picker",
         {
@@ -81,11 +82,16 @@
     "experiments": {
       "typedRoutes": true
     },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/257bacd6-9252-4b49-92bd-05897271c77a",
+      "runtimeVersion": "1.0.0"
+    },
     "extra": {
       "router": {},
       "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "257bacd6-9252-4b49-92bd-05897271c77a"
       }
     }
   }
