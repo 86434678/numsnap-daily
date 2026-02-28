@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Natively",
-    "slug": "Natively",
+    "slug": "natively",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Natively",
+      "bundleIdentifier": "com.kodyfoote.numsnapdaily",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,11 +26,17 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Natively"
+      "package": "com.kodyfoote.numsnapdaily",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
       "bundler": "metro"
+    },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290",
+      "runtimeVersion": "1.0.0"
     },
     "plugins": [
       "expo-font",
@@ -41,7 +48,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "db461926-4668-4eed-921a-2a5806c7d290"
+      }
     }
   }
 }
