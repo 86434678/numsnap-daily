@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useTheme } from '@react-navigation/native';
 import { apiGet } from '@/utils/api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Winner {
   userName: string;
@@ -44,81 +45,100 @@ export default function WinnersScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.gradient}
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background, paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <IconSymbol 
-            ios_icon_name="trophy.fill" 
-            android_material_icon_name="emoji-events" 
-            size={60} 
-            color={colors.primary} 
-          />
-          <Text style={[styles.title, { color: themeColors.text }]}>Recent Winners</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Congratulations to our lucky winners!
-          </Text>
-        </View>
-
-        {winners.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: colors.card }]}>
+    <LinearGradient
+      colors={[colors.gradientStart, colors.gradientEnd]}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
             <IconSymbol 
-              ios_icon_name="star.fill" 
-              android_material_icon_name="star" 
-              size={48} 
-              color={colors.textSecondary} 
+              ios_icon_name="trophy.fill" 
+              android_material_icon_name="emoji-events" 
+              size={60} 
+              color="#FFFFFF" 
             />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No winners yet
-            </Text>
-            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-              Be the first to match the daily number!
+            <Text style={styles.title}>Recent Winners</Text>
+            <Text style={styles.subtitle}>
+              Congratulations to our lucky winners!
             </Text>
           </View>
-        ) : (
-          <React.Fragment>
-            {winners.map((winner, index) => (
-              <View key={index} style={[styles.winnerCard, { backgroundColor: colors.card }]}>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankText}>{index + 1}</Text>
-                </View>
-                <View style={styles.winnerInfo}>
-                  <Text style={[styles.winnerName, { color: themeColors.text }]}>
-                    {winner.userName}
-                  </Text>
-                  <Text style={[styles.winnerDate, { color: colors.textSecondary }]}>
-                    {new Date(winner.date).toLocaleDateString()}
-                  </Text>
-                  <View style={styles.numberBadge}>
-                    <Text style={styles.numberText}>
-                      {String(winner.winningNumber).padStart(6, '0')}
-                    </Text>
+
+          {winners.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: 'rgba(255, 255, 255, 0.95)' }]}>
+              <IconSymbol 
+                ios_icon_name="star.fill" 
+                android_material_icon_name="star" 
+                size={48} 
+                color={colors.textSecondary} 
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No winners yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                Be the first to match the daily number!
+              </Text>
+            </View>
+          ) : (
+            <React.Fragment>
+              {winners.map((winner, index) => {
+                const winnerName = winner.userName;
+                const winnerDate = new Date(winner.date).toLocaleDateString();
+                const winningNumber = String(winner.winningNumber).padStart(6, '0');
+                
+                return (
+                  <View key={index} style={[styles.winnerCard, { backgroundColor: 'rgba(255, 255, 255, 0.95)' }]}>
+                    <View style={styles.rankBadge}>
+                      <Text style={styles.rankText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.winnerInfo}>
+                      <Text style={[styles.winnerName, { color: colors.text }]}>
+                        {winnerName}
+                      </Text>
+                      <Text style={[styles.winnerDate, { color: colors.textSecondary }]}>
+                        {winnerDate}
+                      </Text>
+                      <View style={styles.numberBadge}>
+                        <Text style={styles.numberText}>
+                          {winningNumber}
+                        </Text>
+                      </View>
+                    </View>
+                    <IconSymbol 
+                      ios_icon_name="trophy.fill" 
+                      android_material_icon_name="emoji-events" 
+                      size={32} 
+                      color={colors.success} 
+                    />
                   </View>
-                </View>
-                <IconSymbol 
-                  ios_icon_name="trophy.fill" 
-                  android_material_icon_name="emoji-events" 
-                  size={32} 
-                  color={colors.success} 
-                />
-              </View>
-            ))}
-          </React.Fragment>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+                );
+              })}
+            </React.Fragment>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -142,10 +162,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 15,
     marginBottom: 10,
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
+    color: '#FFFFFF',
   },
   emptyCard: {
     borderRadius: 15,

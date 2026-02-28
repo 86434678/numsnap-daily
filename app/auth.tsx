@@ -11,6 +11,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -140,6 +141,11 @@ export default function AuthScreen() {
           <View style={styles.content}>
             {/* NumSnap Daily Logo */}
             <View style={styles.logoContainer}>
+              <Image 
+                source={require('@/assets/images/56e82d58-a503-4131-bce3-7468abcb4e25.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
               <Text style={styles.logoTitle}>NumSnap</Text>
               <Text style={styles.logoSubtitle}>Daily</Text>
             </View>
@@ -260,6 +266,11 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
   },
   logoTitle: {
     fontSize: 56,
