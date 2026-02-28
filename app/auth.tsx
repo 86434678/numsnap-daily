@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   View,
@@ -7,16 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal,
+  Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
-  Image,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
-import { colors } from "@/styles/commonStyles";
 
 type Mode = "signin" | "signup";
 
@@ -30,34 +26,18 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
-    visible: false,
-    title: '',
-    message: '',
-  });
-
-  const showAlert = (title: string, message: string) => {
-    setAlertModal({ visible: true, title, message });
-  };
-
-  const hideAlert = () => {
-    setAlertModal({ visible: false, title: '', message: '' });
-  };
 
   if (authLoading) {
     return (
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        style={styles.loadingContainer}
-      >
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </LinearGradient>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
     );
   }
 
   const handleEmailAuth = async () => {
     if (!email || !password) {
-      showAlert("Error", "Please enter email and password");
+      Alert.alert("Error", "Please enter email and password");
       return;
     }
 
@@ -65,28 +45,17 @@ export default function AuthScreen() {
     try {
       if (mode === "signin") {
         await signInWithEmail(email, password);
-        // AuthBootstrapGuard will handle redirect once user state updates
+        router.replace("/");
       } else {
-        const result = await signUpWithEmail(email, password, name || undefined);
-        // Do NOT auto-login after signup — user must verify email first
-        showAlert(
-          "Account Created!",
-          result.message || "Account created! Please check your email to verify your account before signing in."
+        await signUpWithEmail(email, password, name);
+        Alert.alert(
+          "Success",
+          "Account created! Please check your email to verify your account."
         );
-        // Switch to sign-in mode so user can login after verifying email
-        setMode("signin");
-        setPassword("");
+        router.replace("/");
       }
     } catch (error: any) {
-      const message = error?.message || "Authentication failed";
-      // Provide friendly error messages
-      if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("credentials")) {
-        showAlert("Sign In Failed", "Invalid email or password. Please try again.");
-      } else if (message.toLowerCase().includes("already") || message.toLowerCase().includes("exists")) {
-        showAlert("Account Exists", "An account with this email already exists. Please sign in instead.");
-      } else {
-        showAlert("Error", message);
-      }
+      Alert.alert("Error", error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -104,156 +73,118 @@ export default function AuthScreen() {
       }
       router.replace("/");
     } catch (error: any) {
-      showAlert("Error", error.message || "Authentication failed");
+      Alert.alert("Error", error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <LinearGradient
-      colors={[colors.gradientStart, colors.gradientEnd]}
-      style={styles.gradient}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        {/* Alert Modal */}
-        <Modal
-          visible={alertModal.visible}
-          transparent
-          animationType="fade"
-          onRequestClose={hideAlert}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{alertModal.title}</Text>
-              <Text style={styles.modalMessage}>{alertModal.message}</Text>
-              <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
-                <Text style={styles.modalButtonText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          <Text style={styles.title}>
+            {mode === "signin" ? "Sign In" : "Sign Up"}
+          </Text>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.content}>
-            {/* NumSnap Daily Logo */}
-            <View style={styles.logoContainer}>
-              <Image 
-                source={require('@/assets/images/app-icon-jte.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.logoTitle}>NumSnap</Text>
-              <Text style={styles.logoSubtitle}>Daily</Text>
-            </View>
+          {mode === "signup" && (
+            <TextInput
+              style={styles.input}
+              placeholder="Name (optional)"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+          )}
 
-            <Text style={styles.title}>
-              {mode === "signin" ? "Sign In" : "Sign Up"}
-            </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-            {mode === "signup" && (
-              <TextInput
-                style={styles.input}
-                placeholder="Name (optional)"
-                placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
+          <TouchableOpacity
+            style={[styles.primaryButton, loading && styles.buttonDisabled]}
+            onPress={handleEmailAuth}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {mode === "signin" ? "Sign In" : "Sign Up"}
+              </Text>
             )}
+          </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="rgba(255, 255, 255, 0.6)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+          <TouchableOpacity
+            style={styles.switchModeButton}
+            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+          >
+            <Text style={styles.switchModeText}>
+              {mode === "signin"
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Sign In"}
+            </Text>
+          </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="rgba(255, 255, 255, 0.6)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={() => handleSocialAuth("google")}
+            disabled={loading}
+          >
+            <Text style={styles.socialButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {Platform.OS === "ios" && (
             <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleEmailAuth}
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={() => handleSocialAuth("apple")}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  {mode === "signin" ? "Sign In" : "Sign Up"}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.switchModeButton}
-              onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
-            >
-              <Text style={styles.switchModeText}>
-                {mode === "signin"
-                  ? "Don't have an account? Sign Up"
-                  : "Already have an account? Sign In"}
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                Continue with Apple
               </Text>
             </TouchableOpacity>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialAuth("google")}
-              disabled={loading}
-            >
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-            {Platform.OS === "ios" && (
-              <TouchableOpacity
-                style={[styles.socialButton, styles.appleButton]}
-                onPress={() => handleSocialAuth("apple")}
-                disabled={loading}
-              >
-                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                  Continue with Apple
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#fff",
   },
   scrollContent: {
     flexGrow: 1,
@@ -263,57 +194,33 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: "center",
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoImage: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-  },
-  logoTitle: {
-    fontSize: 56,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textShadowColor: colors.neonGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
-  },
-  logoSubtitle: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginTop: -8,
-  },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 32,
     textAlign: "center",
-    color: "#FFFFFF",
+    color: "#000",
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    color: "#FFFFFF",
+    backgroundColor: "#fff",
   },
   primaryButton: {
     height: 50,
-    backgroundColor: colors.primary,
+    backgroundColor: "#007AFF",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
   },
   primaryButtonText: {
-    color: colors.text,
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -325,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   switchModeText: {
-    color: "#FFFFFF",
+    color: "#007AFF",
     fontSize: 14,
   },
   divider: {
@@ -336,71 +243,33 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "#ddd",
   },
   dividerText: {
     marginHorizontal: 12,
-    color: "#FFFFFF",
+    color: "#666",
     fontSize: 14,
   },
   socialButton: {
     height: 50,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "#ddd",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#fff",
   },
   socialButtonText: {
     fontSize: 16,
-    color: "#FFFFFF",
+    color: "#000",
     fontWeight: "500",
   },
   appleButton: {
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "#000",
+    borderColor: "#000",
   },
   appleButtonText: {
-    color: "#FFFFFF",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '80%',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 15,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  modalButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-  },
-  modalButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    color: "#fff",
   },
 });

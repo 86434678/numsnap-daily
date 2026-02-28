@@ -80,18 +80,7 @@ export const apiCall = async <T = any>(
     if (!response.ok) {
       const text = await response.text();
       console.error("[API] Error response:", response.status, text);
-      // Try to parse JSON error message for cleaner error messages
-      try {
-        const jsonError = JSON.parse(text);
-        const errorMessage = jsonError.message || jsonError.error || text;
-        throw new Error(errorMessage);
-      } catch (parseError) {
-        // If JSON parse fails, use raw text
-        if (parseError instanceof SyntaxError) {
-          throw new Error(`API error: ${response.status} - ${text}`);
-        }
-        throw parseError;
-      }
+      throw new Error(`API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
@@ -243,53 +232,4 @@ export const authenticatedDelete = async <T = any>(endpoint: string, data: any =
     method: "DELETE",
     body: JSON.stringify(data),
   });
-};
-
-/**
- * Authenticated multipart form data upload
- * Used for uploading photos/files to the backend
- *
- * @param endpoint - API endpoint path
- * @param formData - FormData object with file(s) and other fields
- * @returns Parsed JSON response
- */
-export const authenticatedUpload = async <T = any>(
-  endpoint: string,
-  formData: FormData
-): Promise<T> => {
-  if (!isBackendConfigured()) {
-    throw new Error("Backend URL not configured. Please rebuild the app.");
-  }
-
-  const token = await getBearerToken();
-  if (!token) {
-    throw new Error("Authentication token not found. Please sign in.");
-  }
-
-  const url = `${BACKEND_URL}${endpoint}`;
-  console.log("[API] Uploading to:", url);
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Do NOT set Content-Type here - let the browser set it with the boundary
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("[API] Upload error response:", response.status, text);
-      throw new Error(`Upload error: ${response.status} - ${text}`);
-    }
-
-    const data = await response.json();
-    console.log("[API] Upload success:", data);
-    return data;
-  } catch (error) {
-    console.error("[API] Upload failed:", error);
-    throw error;
-  }
 };

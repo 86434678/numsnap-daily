@@ -1,4 +1,6 @@
+
 import React, { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   View,
   Text,
@@ -11,269 +13,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-
-export default function SignupScreen() {
-  const router = useRouter();
-  const { signUpWithEmail, signInWithGoogle, signInWithApple, resendVerificationEmail } = useAuth();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [alertModal, setAlertModal] = useState<{ visible: boolean; title: string; message: string }>({
-    visible: false,
-    title: "",
-    message: "",
-  });
-
-  const showAlert = (title: string, message: string) => {
-    setAlertModal({ visible: true, title, message });
-  };
-
-  const hideAlert = () => {
-    setAlertModal({ visible: false, title: "", message: "" });
-    // After showing success message, redirect to login
-    if (alertModal.title.includes("Success")) {
-      router.replace("/(auth)/login");
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!email) {
-      showAlert("Error", "Please enter your email address");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await resendVerificationEmail(email);
-      showAlert("Success", result.message || "Verification email sent! Check your inbox and spam folder.");
-    } catch (err: any) {
-      showAlert("Error", err.message || "Failed to resend verification email");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async () => {
-    if (!email || !password) {
-      setError("Please enter email and password");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setShowSuccessMessage(false);
-    try {
-      console.log("[Signup] Attempting sign up...");
-      const result = await signUpWithEmail(email, password, name);
-      
-      if (result.success) {
-        console.log("[Signup] Sign up successful, showing verification message");
-        setShowSuccessMessage(true);
-        setError("");
-      }
-    } catch (err: any) {
-      console.error("[Signup] Error:", err);
-      const message = err.message || "Sign up failed";
-      
-      if (message.toLowerCase().includes("already exists") || message.toLowerCase().includes("duplicate")) {
-        setError("An account with this email already exists. Please log in instead.");
-      } else {
-        setError(message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSocialAuth = async (provider: "google" | "apple") => {
-    setLoading(true);
-    setError("");
-    setShowSuccessMessage(false);
-    try {
-      console.log(`[Signup] Attempting ${provider} sign in...`);
-      let result;
-      if (provider === "google") {
-        result = await signInWithGoogle();
-      } else if (provider === "apple") {
-        result = await signInWithApple();
-      }
-      if (result?.success) {
-        console.log(`[Signup] ${provider} sign in successful`);
-        // AuthContext will handle redirect
-      } else {
-        throw new Error(result?.message || "Authentication failed");
-      }
-    } catch (err: any) {
-      console.error("[Signup] Social auth error:", err);
-      setError(err.message || "Authentication failed — please try again");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <LinearGradient
-        colors={["#1E3A8A", "#3B82F6", "#60A5FA"]}
-        style={styles.gradient}
-      >
-        {/* Alert Modal */}
-        <Modal
-          visible={alertModal.visible}
-          transparent
-          animationType="fade"
-          onRequestClose={hideAlert}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{alertModal.title}</Text>
-              <Text style={styles.modalMessage}>{alertModal.message}</Text>
-              <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
-                <Text style={styles.modalButtonText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.content}>
-            <Text style={styles.logo}>📸</Text>
-            <Text style={styles.title}>NumSnap Daily</Text>
-            <Text style={styles.subtitle}>Create your account</Text>
-
-            {showSuccessMessage ? (
-              <View style={styles.successContainer}>
-                <Text style={styles.successTitle}>✅ Account Created!</Text>
-                <Text style={styles.successText}>
-                  Check your email for verification link (check spam/junk folder if not in inbox).
-                </Text>
-                <TouchableOpacity
-                  style={styles.resendButton}
-                  onPress={handleResendVerification}
-                  disabled={loading}
-                >
-                  <Text style={styles.resendButtonText}>Resend Verification Email</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={() => router.replace("/(auth)/login")}
-                >
-                  <Text style={styles.loginButtonText}>Go to Login</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Name (optional)"
-                  placeholderTextColor="#999"
-                  value={name}
-                  onChangeText={(text) => {
-                    setName(text);
-                    setError("");
-                  }}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setError("");
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password (min 8 characters)"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setError("");
-                  }}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-
-                <TouchableOpacity
-                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
-                  onPress={handleSignup}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Sign Up</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.loginLink}
-                  onPress={() => router.push("/(auth)/login")}
-                >
-                  <Text style={styles.loginLinkText}>
-                    Already have an account? <Text style={styles.loginLinkBold}>Log In</Text>
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or continue with</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.socialButton}
-                  onPress={() => handleSocialAuth("google")}
-                  disabled={loading}
-                >
-                  <Text style={styles.socialButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
-
-                {Platform.OS === "ios" && (
-                  <TouchableOpacity
-                    style={[styles.socialButton, styles.appleButton]}
-                    onPress={() => handleSocialAuth("apple")}
-                    disabled={loading}
-                  >
-                    <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                      Continue with Apple
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    </KeyboardAvoidingView>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -284,120 +25,59 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
     justifyContent: "center",
-  },
-  logo: {
-    fontSize: 64,
-    textAlign: "center",
-    marginBottom: 16,
+    padding: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
     color: "#fff",
+    textAlign: "center",
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    marginBottom: 32,
-    textAlign: "center",
-    color: "#E0E7FF",
-  },
-  successContainer: {
-    backgroundColor: "rgba(16, 185, 129, 0.2)",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#D1FAE5",
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  successText: {
-    fontSize: 15,
-    color: "#E0E7FF",
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  resendButton: {
-    backgroundColor: "#3B82F6",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  resendButtonText: {
     color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  loginButton: {
-    backgroundColor: "#10B981",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  errorText: {
-    color: "#FEE2E2",
-    backgroundColor: "#991B1B",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    fontSize: 14,
     textAlign: "center",
+    marginBottom: 40,
+    opacity: 0.9,
   },
   input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderRadius: 8,
-    paddingHorizontal: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
     fontSize: 16,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    color: "#000",
+    color: "#333",
   },
-  primaryButton: {
-    height: 50,
-    backgroundColor: "#10B981",
-    borderRadius: 8,
-    justifyContent: "center",
+  button: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 12,
+    padding: 16,
     alignItems: "center",
-    marginTop: 8,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    marginBottom: 16,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  loginLink: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  loginLinkText: {
-    color: "#E0E7FF",
-    fontSize: 14,
-  },
-  loginLinkBold: {
-    fontWeight: "bold",
+  buttonText: {
     color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  socialButton: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  socialButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   divider: {
     flexDirection: "row",
@@ -407,71 +87,336 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
   },
   dividerText: {
-    marginHorizontal: 12,
-    color: "#E0E7FF",
+    color: "#fff",
+    marginHorizontal: 16,
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  linkContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  linkText: {
+    color: "#fff",
     fontSize: 14,
   },
-  socialButton: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.9)",
-  },
-  socialButtonText: {
-    fontSize: 16,
-    color: "#000",
-    fontWeight: "500",
-  },
-  appleButton: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  appleButtonText: {
+  link: {
     color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+  errorText: {
+    color: "#ff6b6b",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    fontSize: 14,
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
     padding: 24,
     width: "80%",
-    alignItems: "center",
+    maxWidth: 400,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#000",
-    marginBottom: 10,
-    textAlign: "center",
+    marginBottom: 12,
+    color: "#333",
   },
   modalMessage: {
-    fontSize: 15,
-    color: "#555",
-    textAlign: "center",
+    fontSize: 16,
     marginBottom: 20,
-    lineHeight: 22,
+    color: "#666",
   },
   modalButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
   },
   modalButtonText: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
 });
+
+export default function SignupScreen() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const { signUpWithEmail, signInWithGoogle, signInWithApple, resendVerificationEmail } = useAuth();
+  const router = useRouter();
+
+  const showAlert = (title: string, message: string) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
+  const hideAlert = () => {
+    setAlertVisible(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      showAlert("Email Required", "Please enter your email address");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await resendVerificationEmail(email);
+      if (result.success) {
+        showAlert("Success", result.message);
+      } else {
+        showAlert("Error", result.message);
+      }
+    } catch (error: any) {
+      showAlert("Error", error?.message || "Failed to resend verification email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      console.log("[SignupScreen] Attempting signup for:", email);
+      
+      const result = await signUpWithEmail(email, password, name);
+      
+      if (result.success) {
+        console.log("[SignupScreen] Signup successful");
+        showAlert(
+          "Account Created!",
+          "Please check your email (including spam/junk folder) to verify your account before logging in."
+        );
+      } else {
+        setError(result.message);
+      }
+    } catch (error: any) {
+      console.error("[SignupScreen] Signup error:", error);
+      
+      let errorMessage = "Sign up failed. Please try again.";
+      
+      if (error?.message) {
+        const msg = error.message.toLowerCase();
+        
+        if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate")) {
+          errorMessage = "An account with this email already exists. Please log in instead.";
+        } else if (msg.includes("invalid") && msg.includes("email")) {
+          errorMessage = "Please enter a valid email address.";
+        } else if (msg.includes("password")) {
+          errorMessage = "Password must be at least 8 characters long.";
+        } else if (msg.includes("network") || msg.includes("fetch")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialAuth = async (provider: "google" | "apple") => {
+    try {
+      setLoading(true);
+      setError("");
+      
+      if (provider === "google") {
+        await signInWithGoogle();
+      } else {
+        await signInWithApple();
+      }
+      
+      router.replace("/(tabs)/(home)/");
+    } catch (error: any) {
+      console.error(`[SignupScreen] ${provider} auth error:`, error);
+      setError(error?.message || `${provider} sign up failed`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <LinearGradient colors={["#6A1B9A", "#8E24AA", "#AB47BC"]} style={styles.gradient}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Join NumSnap!</Text>
+          <Text style={styles.subtitle}>Create your account and start winning</Text>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            placeholderTextColor="#999"
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              setError("");
+            }}
+            autoCapitalize="words"
+            editable={!loading}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#999"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError("");
+            }}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!loading}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Password (min 8 characters)"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setError("");
+            }}
+            secureTextEntry
+            editable={!loading}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="#999"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              setError("");
+            }}
+            secureTextEntry
+            editable={!loading}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignup}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={() => handleSocialAuth("google")}
+            disabled={loading}
+          >
+            <Text style={styles.socialButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialAuth("apple")}
+              disabled={loading}
+            >
+              <Text style={styles.socialButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.linkContainer}>
+            <Text style={styles.linkText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")} disabled={loading}>
+              <Text style={styles.link}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+
+      <Modal visible={alertVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{alertTitle}</Text>
+            <Text style={styles.modalMessage}>{alertMessage}</Text>
+            {alertTitle === "Account Created!" ? (
+              <>
+                <TouchableOpacity style={[styles.modalButton, { marginBottom: 12 }]} onPress={handleResendVerification}>
+                  <Text style={styles.modalButtonText}>Resend Verification Email</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: "#999" }]}
+                  onPress={() => {
+                    hideAlert();
+                    router.replace("/(auth)/login");
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Go to Login</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.modalButton} onPress={hideAlert}>
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
+  );
+}
