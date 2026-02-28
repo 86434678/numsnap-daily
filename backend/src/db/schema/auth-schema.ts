@@ -5,7 +5,6 @@ export const user = pgTable("user", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
-  verified: boolean("verified").default(false).notNull(),
   ageVerified: boolean("age_verified").default(false).notNull(),
   age: integer("age"),
   ageVerifiedAt: timestamp("age_verified_at", { withTimezone: true }),

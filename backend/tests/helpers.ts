@@ -82,88 +82,24 @@ export async function signUpTestUser(): Promise<TestUser> {
 
   const signupData = (await res.json()) as any;
 
-  // Log the signup response structure for debugging
-  console.log("Signup response keys:", Object.keys(signupData));
-  console.log("Session value:", signupData.session);
-  if (signupData.session && typeof signupData.session === "object") {
-    console.log("Session keys:", Object.keys(signupData.session));
-  }
-
   // Extract token from signup response
   let sessionToken = "";
-
-  // Try multiple possible formats
   if (signupData.session) {
     if (typeof signupData.session === "string") {
       sessionToken = signupData.session;
     } else if (signupData.session.token) {
       sessionToken = signupData.session.token;
-    } else if (signupData.session.sessionToken) {
-      sessionToken = signupData.session.sessionToken;
-    }
-  }
-
-  // Also try direct token field
-  if (!sessionToken && signupData.token) {
-    sessionToken = signupData.token;
-  }
-
-  // If still no token, try logging in
-  if (!sessionToken) {
-    console.log("No token in signup response, attempting login...");
-    const loginRes = await api("/api/auth/sign-in/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password: "TestPassword123!",
-      }),
-    });
-
-    if (loginRes.ok) {
-      const loginData = (await loginRes.json()) as any;
-      console.log("Login response keys:", Object.keys(loginData));
-
-      if (loginData.session) {
-        if (typeof loginData.session === "string") {
-          sessionToken = loginData.session;
-        } else if (loginData.session.token) {
-          sessionToken = loginData.session.token;
-        }
-      }
-      console.log("Token extracted from login:", sessionToken ? "success" : "failed");
-    } else {
-      console.error("Login failed:", loginRes.status, await loginRes.text());
     }
   }
 
   if (!sessionToken) {
-    throw new Error(`Failed to extract session token. Signup response: ${JSON.stringify(signupData).substring(0, 300)}`);
+    throw new Error(`Failed to extract session token from signup response`);
   }
 
   const testUser: TestUser = {
     token: sessionToken,
     user: signupData.user,
   };
-
-  // Mark user as verified for testing (bypass email verification requirement)
-  try {
-    const verifyRes = await api("/api/debug/mark-verified", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: signupData.user.id }),
-    });
-
-    if (!verifyRes.ok) {
-      const verifyError = await verifyRes.text();
-      console.error(`Failed to mark user as verified (${verifyRes.status}):`, verifyError);
-    } else {
-      console.log("User marked as verified for testing");
-    }
-  } catch (error) {
-    console.error("Failed to mark user as verified:", error);
-    // Continue anyway - this endpoint might not exist
-  }
 
   // Auto-register cleanup so the test file doesn't need to
   afterAll(async () => {

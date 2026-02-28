@@ -85,7 +85,7 @@ export function registerAuthRoutes(app: App) {
 
       await app.db
         .update(user)
-        .set({ emailVerified: true, verified: true })
+        .set({ emailVerified: true })
         .where(eq(user.id, verificationRecord.userId));
 
       await app.db
@@ -258,48 +258,6 @@ export function registerAuthRoutes(app: App) {
       );
 
       return { success: true, ageVerified: true };
-    }
-  );
-
-  // POST /api/debug/mark-verified - DEBUG endpoint to mark user as verified (test only)
-  app.fastify.post<{ Body: { userId: string } }>(
-    '/api/debug/mark-verified',
-    {
-      schema: {
-        description: 'DEBUG: Mark user as verified (test environment only)',
-        tags: ['debug'],
-        body: {
-          type: 'object',
-          required: ['userId'],
-          properties: {
-            userId: { type: 'string' },
-          },
-        },
-        response: {
-          200: {
-            description: 'User marked as verified',
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-            },
-          },
-        },
-      },
-    },
-    async (
-      request: FastifyRequest<{ Body: { userId: string } }>,
-      reply: FastifyReply
-    ): Promise<{ success: boolean }> => {
-      const { userId } = request.body;
-
-      app.logger.info({ userId }, 'Debug: Marking user as verified');
-
-      await app.db
-        .update(user)
-        .set({ verified: true })
-        .where(eq(user.id, userId));
-
-      return { success: true };
     }
   );
 

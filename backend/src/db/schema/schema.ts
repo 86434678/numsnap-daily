@@ -15,8 +15,6 @@ export const submissions = pgTable('submissions', {
   confirmedNumber: integer('confirmed_number').notNull(),
   latitude: numeric('latitude', { precision: 10, scale: 8 }),
   longitude: numeric('longitude', { precision: 11, scale: 8 }),
-  city: text('city'),
-  isManualEntry: boolean('is_manual_entry').default(false).notNull(),
   submissionDate: date('submission_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   revealTimePST: timestamp('reveal_time_pst', { withTimezone: true }),
