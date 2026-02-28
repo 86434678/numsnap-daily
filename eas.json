@@ -1,14 +1,20 @@
 {
   "cli": {
-    "version": ">= 5.9.3",
-    "appVersionSource": "local"
+    "version": ">= 5.9.3"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "autoIncrement": true,
-      "credentialsSource": "remote",
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Debug"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
       "env": {
         "EXPO_PUBLIC_ENV": "development"
       }
@@ -16,10 +22,21 @@
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "credentialsSource": "remote"
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "preview"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_ENV": "production"
+      }
     }
   },
   "submit": {

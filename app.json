@@ -1,17 +1,12 @@
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "numsnap-daily",
+    "slug": "NumSnap Daily",
     "version": "1.0.0",
-    "updates": {
-      "enabled": true,
-      "url": "https://u.expo.dev/db461926-4668-4eed-921a-2a5806c7d290",
-      "runtimeVersion": "1.0.0"
-    },
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/app-icon-jte.png",
       "resizeMode": "contain",
@@ -82,7 +77,7 @@
         }
       ]
     ],
-    "scheme": "numsnapdaily",
+    "scheme": "NumSnap Daily",
     "experiments": {
       "typedRoutes": true
     },
@@ -90,7 +85,7 @@
       "router": {},
       "backendUrl": "https://jcass42wk4cmnu48h8a3f5kza2w9nxnq.app.specular.dev",
       "eas": {
-        "projectId": "db461926-4668-4eed-921a-2a5806c7d290"
+        "projectId": "your-project-id"
       }
     }
   }
