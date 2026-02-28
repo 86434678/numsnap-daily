@@ -9,10 +9,6 @@
       "distribution": "internal",
       "autoIncrement": true,
       "credentialsSource": "remote",
-      "ios": {
-        "simulator": false,
-        "buildConfiguration": "Debug"
-      },
       "env": {
         "EXPO_PUBLIC_ENV": "development"
       }
