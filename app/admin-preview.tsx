@@ -10,11 +10,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function AdminPreviewScreen() {
   const router = useRouter();
 
-  const handlePreviewPaywall = () => {
-    console.log('Admin navigating to paywall preview');
-    router.push('/admin-preview-paywall');
-  };
-
   const handlePreviewWin = () => {
     console.log('Admin navigating to win preview');
     router.push('/admin-preview-win');
@@ -54,34 +49,6 @@ export default function AdminPreviewScreen() {
             <View style={styles.previewCard}>
               <TouchableOpacity 
                 style={styles.previewButton}
-                onPress={handlePreviewPaywall}
-              >
-                <View style={styles.previewButtonContent}>
-                  <IconSymbol 
-                    ios_icon_name="lock.fill" 
-                    android_material_icon_name="lock" 
-                    size={32} 
-                    color={colors.primary} 
-                  />
-                  <View style={styles.previewButtonText}>
-                    <Text style={styles.previewButtonTitle}>Preview Paywall</Text>
-                    <Text style={styles.previewButtonDescription}>
-                      View the premium subscription paywall screen
-                    </Text>
-                  </View>
-                  <IconSymbol 
-                    ios_icon_name="chevron.right" 
-                    android_material_icon_name="chevron-right" 
-                    size={24} 
-                    color={colors.textSecondary} 
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity 
-                style={styles.previewButton}
                 onPress={handlePreviewWin}
               >
                 <View style={styles.previewButtonContent}>
@@ -94,7 +61,7 @@ export default function AdminPreviewScreen() {
                   <View style={styles.previewButtonText}>
                     <Text style={styles.previewButtonTitle}>Preview Win Screen</Text>
                     <Text style={styles.previewButtonDescription}>
-                      View the winning result reveal screen
+                      View the winning result reveal screen with confetti
                     </Text>
                   </View>
                   <IconSymbol 
@@ -143,7 +110,7 @@ export default function AdminPreviewScreen() {
                 color={colors.primary} 
               />
               <Text style={styles.infoText}>
-                These previews show sample data and are only accessible to admin users.
+                These previews show sample data and are only accessible to admin users. No purchase necessary.
               </Text>
             </View>
           </ScrollView>

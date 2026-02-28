@@ -1,13 +1,80 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Dimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CONFETTI_COLORS = ['#FFD700', '#FF6B9D', '#00FF7F', '#4A90E2', '#9B59B6', '#FF4500', '#00BFFF'];
+
+interface ConfettiPieceProps {
+  x: number;
+  delay: number;
+  color: string;
+  size: number;
+}
+
+function ConfettiPiece({ x, delay, color, size }: ConfettiPieceProps) {
+  const translateY = useSharedValue(-20);
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const rotate = useSharedValue(0);
+
+  useEffect(() => {
+    translateY.value = withDelay(delay, withTiming(SCREEN_HEIGHT + 50, { duration: 3000, easing: Easing.linear }));
+    translateX.value = withDelay(delay, withTiming((Math.random() - 0.5) * 200, { duration: 3000 }));
+    rotate.value = withDelay(delay, withTiming(Math.random() * 720, { duration: 3000 }));
+    opacity.value = withDelay(delay + 2000, withTiming(0, { duration: 1000 }));
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+      { rotate: `${rotate.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: x,
+          top: 0,
+          width: size,
+          height: size * 0.6,
+          backgroundColor: color,
+          borderRadius: 2,
+        },
+        animStyle,
+      ]}
+    />
+  );
+}
+
+function ConfettiAnimation() {
+  const pieces = Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    x: Math.random() * SCREEN_WIDTH,
+    delay: Math.random() * 1500,
+    color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    size: Math.random() * 10 + 6,
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      {pieces.map((p) => (
+        <ConfettiPiece key={p.id} x={p.x} delay={p.delay} color={p.color} size={p.size} />
+      ))}
+    </View>
+  );
+}
 
 export default function AdminPreviewWinScreen() {
   const router = useRouter();
@@ -38,6 +105,8 @@ export default function AdminPreviewWinScreen() {
         }} 
       />
       <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
+        <ConfettiAnimation />
+        
         <LinearGradient
           colors={['#00FF7F', '#00CC66']}
           style={styles.gradient}
