@@ -142,7 +142,7 @@ export default function AuthScreen() {
             {/* NumSnap Daily Logo */}
             <View style={styles.logoContainer}>
               <Image 
-                source={require('@/assets/images/56e82d58-a503-4131-bce3-7468abcb4e25.png')}
+                source={require('@/assets/images/app-icon-jte.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
