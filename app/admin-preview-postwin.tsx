@@ -1,122 +1,245 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
+import { LinearGradient } from 'expo-linear-gradient';
+
+type PaymentMethod = 'paypal' | 'venmo' | 'egift';
 
 export default function AdminPreviewPostWinScreen() {
   const router = useRouter();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paypal');
+  const [paymentInfo, setPaymentInfo] = useState('');
+  const [confirmedAccuracy, setConfirmedAccuracy] = useState(false);
 
-  console.log('[Admin Preview] Post-win details preview opened');
+  const handleClose = () => {
+    console.log('Admin closing post-win preview');
+    router.back();
+  };
+
+  const getPaymentMethodLabel = (method: PaymentMethod): string => {
+    switch (method) {
+      case 'paypal':
+        return 'PayPal';
+      case 'venmo':
+        return 'Venmo';
+      case 'egift':
+        return 'Digital e-Gift Card';
+      default:
+        return '';
+    }
+  };
+
+  const getPaymentMethodPlaceholder = (method: PaymentMethod): string => {
+    switch (method) {
+      case 'paypal':
+        return 'Enter PayPal email or username';
+      case 'venmo':
+        return 'Enter Venmo username/handle (e.g., @username)';
+      case 'egift':
+        return 'Enter email for e-gift card delivery';
+      default:
+        return '';
+    }
+  };
+
+  const getPaymentMethodDescription = (method: PaymentMethod): string => {
+    switch (method) {
+      case 'paypal':
+        return 'We\'ll send $25 to your PayPal account. You can provide your PayPal email, username, or PayPal.Me link.';
+      case 'venmo':
+        return 'We\'ll send $25 to your Venmo account. Please provide your Venmo username or handle.';
+      case 'egift':
+        return 'We\'ll email you a $25 Visa or Amazon e-gift card code. No bank details required.';
+      default:
+        return '';
+    }
+  };
+
+  const paymentMethodLabel = getPaymentMethodLabel(paymentMethod);
+  const paymentMethodPlaceholder = getPaymentMethodPlaceholder(paymentMethod);
+  const paymentMethodDescription = getPaymentMethodDescription(paymentMethod);
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
-      <LinearGradient
-        colors={['#00FF7F', '#00CC66']}
-        style={styles.gradient}
-      >
+    <>
+      <Stack.Screen 
+        options={{
+          title: 'Post-Win Preview',
+          headerShown: true,
+          headerBackTitle: 'Back',
+        }} 
+      />
+      <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          <View style={styles.header}>
+          <View style={styles.adminBadge}>
+            <IconSymbol 
+              ios_icon_name="eye.fill" 
+              android_material_icon_name="visibility" 
+              size={16} 
+              color="#FFFFFF" 
+            />
+            <Text style={styles.adminBadgeText}>ADMIN PREVIEW</Text>
+          </View>
+
+          <LinearGradient
+            colors={['#FFD700', '#FFA500', '#FF8C00']}
+            style={styles.prizeHeader}
+          >
             <IconSymbol 
               ios_icon_name="trophy.fill" 
               android_material_icon_name="emoji-events" 
               size={60} 
-              color="#FFD700" 
+              color="#FFFFFF" 
             />
-            <Text style={styles.title}>Winner Details</Text>
-            <Text style={styles.subtitle}>Your submission information</Text>
-            <Text style={styles.previewBadge}>PREVIEW MODE</Text>
-          </View>
+            <Text style={styles.prizeTitle}>Congratulations!</Text>
+            <Text style={styles.prizeSubtitle}>You won $25 USD</Text>
+            <Text style={styles.winningNumberText}>Winning Number: 123456</Text>
+          </LinearGradient>
 
-          <View style={styles.submissionDetailsCard}>
-            <Text style={styles.detailsTitle}>Your Submission Details</Text>
-            
-            <View style={styles.photoContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400' }} 
-                style={styles.submissionPhoto}
-                resizeMode="cover"
-              />
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose Payout Method</Text>
+            <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+              Select how you&apos;d like to receive your prize. No bank details required.
+            </Text>
+
+            <View style={styles.paymentMethodsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodButton,
+                  paymentMethod === 'paypal' && styles.paymentMethodButtonActive,
+                ]}
+                onPress={() => setPaymentMethod('paypal')}
+              >
+                <View style={styles.radioOuter}>
+                  {paymentMethod === 'paypal' && <View style={styles.radioInner} />}
+                </View>
+                <Text style={[
+                  styles.paymentMethodText,
+                  paymentMethod === 'paypal' && styles.paymentMethodTextActive,
+                ]}>
+                  PayPal
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodButton,
+                  paymentMethod === 'venmo' && styles.paymentMethodButtonActive,
+                ]}
+                onPress={() => setPaymentMethod('venmo')}
+              >
+                <View style={styles.radioOuter}>
+                  {paymentMethod === 'venmo' && <View style={styles.radioInner} />}
+                </View>
+                <Text style={[
+                  styles.paymentMethodText,
+                  paymentMethod === 'venmo' && styles.paymentMethodTextActive,
+                ]}>
+                  Venmo
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentMethodButton,
+                  paymentMethod === 'egift' && styles.paymentMethodButtonActive,
+                ]}
+                onPress={() => setPaymentMethod('egift')}
+              >
+                <View style={styles.radioOuter}>
+                  {paymentMethod === 'egift' && <View style={styles.radioInner} />}
+                </View>
+                <Text style={[
+                  styles.paymentMethodText,
+                  paymentMethod === 'egift' && styles.paymentMethodTextActive,
+                ]}>
+                  Digital e-Gift Card
+                </Text>
+              </TouchableOpacity>
             </View>
-            
-            <View style={styles.detailRow}>
+
+            <View style={styles.descriptionBox}>
               <IconSymbol 
-                ios_icon_name="location.fill" 
-                android_material_icon_name="location-on" 
+                ios_icon_name="info.circle.fill" 
+                android_material_icon_name="info" 
                 size={20} 
                 color={colors.primary} 
               />
-              <Text style={styles.detailText}>Los Angeles, CA (34.0522, -118.2437)</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <IconSymbol 
-                ios_icon_name="hand.raised.fill" 
-                android_material_icon_name="edit" 
-                size={20} 
-                color={colors.secondary} 
-              />
-              <Text style={styles.detailText}>Manual entry provided by user</Text>
+              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+                {paymentMethodDescription}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.numberCard}>
-            <Text style={styles.cardLabel}>Winning Number:</Text>
-            <View style={styles.numberContainer}>
-              <Text style={styles.number}>123456</Text>
-            </View>
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Information</Text>
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+              placeholder={paymentMethodPlaceholder}
+              placeholderTextColor={colors.textSecondary}
+              value={paymentInfo}
+              onChangeText={setPaymentInfo}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType={paymentMethod === 'egift' || paymentMethod === 'paypal' ? 'email-address' : 'default'}
+            />
           </View>
 
-          <View style={styles.prizeCard}>
-            <Text style={styles.prizeAmount}>$25</Text>
-            <Text style={styles.prizeLabel}>Prize Won!</Text>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.claimButton}
-            onPress={() => console.log('[Admin Preview] Claim button tapped (dummy)')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#FFD700', '#FFA500']}
-              style={styles.claimButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+          <View style={[styles.section, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setConfirmedAccuracy(!confirmedAccuracy)}
             >
-              <IconSymbol 
-                ios_icon_name="gift.fill" 
-                android_material_icon_name="card-giftcard" 
-                size={24} 
-                color="#FFFFFF" 
-              />
-              <Text style={styles.claimButtonText}>Claim Your Prize</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <View style={[styles.checkbox, confirmedAccuracy && styles.checkboxChecked]}>
+                {confirmedAccuracy && (
+                  <IconSymbol 
+                    ios_icon_name="checkmark" 
+                    android_material_icon_name="check" 
+                    size={18} 
+                    color="#FFFFFF" 
+                  />
+                )}
+              </View>
+              <Text style={[styles.checkboxLabel, { color: colors.text }]}>
+                I confirm that the information provided is accurate and understand that prizes are processed manually within 7 business days.
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={[styles.submitButton, (!confirmedAccuracy || !paymentInfo.trim()) && styles.submitButtonDisabled]}
+            onPress={handleClose}
+            disabled={!confirmedAccuracy || !paymentInfo.trim()}
+          >
             <IconSymbol 
-              ios_icon_name="arrow.left" 
-              android_material_icon_name="arrow-back" 
-              size={20} 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name="check-circle" 
+              size={24} 
               color="#FFFFFF" 
             />
-            <Text style={styles.backButtonText}>Back to Admin Dashboard</Text>
+            <Text style={styles.submitButtonText}>Submit Claim</Text>
           </TouchableOpacity>
+
+          <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
+            You have 30 days from your win date to claim your prize. After that, the prize will be forfeited.
+          </Text>
+
+          <Text style={styles.disclaimer}>
+            This is a preview screen. No actual claim will be submitted.
+          </Text>
         </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -125,160 +248,188 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 15,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 8,
-  },
-  previewBadge: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FF4500',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginTop: 15,
-  },
-  submissionDetailsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  detailsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  photoContainer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 15,
-    overflow: 'hidden',
-    marginBottom: 15,
-    backgroundColor: '#F0F0F0',
-  },
-  submissionPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  detailRow: {
+  adminBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  detailText: {
-    fontSize: 15,
-    color: colors.text,
-    flex: 1,
-  },
-  numberCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
-    padding: 25,
+    alignSelf: 'center',
     marginBottom: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
   },
-  cardLabel: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: 15,
-    fontWeight: '600',
-  },
-  numberContainer: {
-    backgroundColor: colors.success,
-    borderRadius: 15,
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-  },
-  number: {
-    fontSize: 48,
+  adminBadgeText: {
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    letterSpacing: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  prizeCard: {
-    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  prizeHeader: {
     borderRadius: 20,
-    padding: 25,
+    padding: 30,
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  prizeAmount: {
-    fontSize: 56,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  prizeLabel: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 5,
-  },
-  claimButton: {
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  claimButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 10,
-  },
-  claimButtonText: {
-    fontSize: 20,
+  prizeTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginTop: 15,
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 15,
-    padding: 15,
-    gap: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
+  prizeSubtitle: {
+    fontSize: 24,
     fontWeight: '600',
     color: '#FFFFFF',
+    marginTop: 5,
+  },
+  winningNumberText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 10,
+    opacity: 0.9,
+  },
+  section: {
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    marginBottom: 15,
+    lineHeight: 20,
+  },
+  paymentMethodsContainer: {
+    gap: 12,
+    marginBottom: 15,
+  },
+  paymentMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#F9F9F9',
+  },
+  paymentMethodButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#E3F2FD',
+  },
+  radioOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#999',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  paymentMethodText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  paymentMethodTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  descriptionBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F8FF',
+    padding: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  descriptionText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#999',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    padding: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 15,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  footerNote: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 18,
+    marginBottom: 15,
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 });

@@ -1,181 +1,158 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Dimensions, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, Stack } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CONFETTI_COLORS = ['#FFD700', '#FF6B9D', '#00FF7F', '#4A90E2', '#9B59B6', '#FF4500', '#00BFFF'];
-
-interface ConfettiPieceProps {
-  x: number;
-  delay: number;
-  color: string;
-  size: number;
-}
-
-function ConfettiPiece({ x, delay, color, size }: ConfettiPieceProps) {
-  const translateY = useSharedValue(-20);
-  const translateX = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const rotate = useSharedValue(0);
-
-  React.useEffect(() => {
-    translateY.value = withDelay(delay, withTiming(SCREEN_HEIGHT + 50, { duration: 3000, easing: Easing.linear }));
-    translateX.value = withDelay(delay, withTiming((Math.random() - 0.5) * 200, { duration: 3000 }));
-    rotate.value = withDelay(delay, withTiming(Math.random() * 720, { duration: 3000 }));
-    opacity.value = withDelay(delay + 2000, withTiming(0, { duration: 1000 }));
-  }, []);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { translateX: translateX.value },
-      { rotate: `${rotate.value}deg` },
-    ],
-    opacity: opacity.value,
-  }));
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          left: x,
-          top: 0,
-          width: size,
-          height: size * 0.6,
-          backgroundColor: color,
-          borderRadius: 2,
-        },
-        animStyle,
-      ]}
-    />
-  );
-}
-
-function ConfettiAnimation() {
-  const pieces = Array.from({ length: 60 }, (_, i) => ({
-    id: i,
-    x: Math.random() * SCREEN_WIDTH,
-    delay: Math.random() * 1500,
-    color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-    size: Math.random() * 10 + 6,
-  }));
-
-  return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      {pieces.map((p) => (
-        <ConfettiPiece key={p.id} x={p.x} delay={p.delay} color={p.color} size={p.size} />
-      ))}
-    </View>
-  );
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function AdminPreviewWinScreen() {
   const router = useRouter();
 
-  const dummyNumber = '123456';
-  const dummyUserName = 'Preview User';
-  const dummyTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  const dummyDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const handleClaimPrize = () => {
+    console.log('Admin navigating to post-win preview');
+    router.push('/admin-preview-postwin');
+  };
+
+  const handleClose = () => {
+    console.log('Admin closing win preview');
+    router.back();
+  };
+
+  const userNumberDisplay = '123456';
+  const targetNumberDisplay = '123456';
+  const timeDisplay = '2:45 PM';
+  const dateDisplay = 'Jan 15, 2024';
+  const locationText = 'San Francisco, CA';
 
   return (
-    <View style={styles.container}>
-      <ConfettiAnimation />
-      
-      <LinearGradient
-        colors={['#00FF7F', '#00CC66']}
-        style={styles.gradient}
-      >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={[styles.content, { paddingTop: Platform.OS === 'android' ? 48 : 20 }]}
+    <>
+      <Stack.Screen 
+        options={{
+          title: 'Win Preview',
+          headerShown: true,
+          headerBackTitle: 'Back',
+        }} 
+      />
+      <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === 'android' ? 48 : 0 }]} edges={['top']}>
+        <LinearGradient
+          colors={['#00FF7F', '#00CC66']}
+          style={styles.gradient}
         >
-          <View style={styles.previewBadge}>
-            <Text style={styles.previewBadgeText}>PREVIEW MODE</Text>
-          </View>
-
-          <View style={styles.header}>
-            <IconSymbol 
-              ios_icon_name="trophy.fill" 
-              android_material_icon_name="emoji-events" 
-              size={80} 
-              color="#FFD700" 
-            />
-            <Text style={styles.winTitle}>WINNER!</Text>
-            <Text style={styles.winSubtitle}>Congratulations! You matched the number!</Text>
-          </View>
-
-          <View style={styles.resultCard}>
-            <Text style={styles.cardLabel}>Your Snap:</Text>
-            <View style={styles.numberContainer}>
-              <Text style={styles.number}>{dummyNumber}</Text>
-            </View>
-          </View>
-
-          <View style={styles.resultCard}>
-            <Text style={styles.cardLabel}>Today&apos;s Number:</Text>
-            <View style={[styles.numberContainer, styles.matchContainer]}>
-              <Text style={styles.number}>{dummyNumber}</Text>
-            </View>
-            <Text style={styles.matchText}>Perfect Match! 🎉</Text>
-          </View>
-
-          <View style={styles.prizeCard}>
-            <Text style={styles.prizeAmount}>$25</Text>
-            <Text style={styles.prizeLabel}>Prize Won!</Text>
-            <Text style={styles.prizeSubtext}>Tap below to claim your prize</Text>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.claimButton}
-            onPress={() => console.log('[Admin Preview] Claim button tapped (dummy)')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#FFD700', '#FFA500']}
-              style={styles.claimButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+            <View style={styles.adminBadge}>
               <IconSymbol 
-                ios_icon_name="gift.fill" 
-                android_material_icon_name="card-giftcard" 
-                size={24} 
+                ios_icon_name="eye.fill" 
+                android_material_icon_name="visibility" 
+                size={16} 
                 color="#FFFFFF" 
               />
-              <Text style={styles.claimButtonText}>Claim Your Prize</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <Text style={styles.adminBadgeText}>ADMIN PREVIEW</Text>
+            </View>
 
-          <View style={styles.watermarkCard}>
-            <IconSymbol 
-              ios_icon_name="person.fill" 
-              android_material_icon_name="person" 
-              size={16} 
-              color={colors.textSecondary} 
-            />
-            <Text style={styles.watermarkText}>
-              Your result only – {dummyUserName} – {dummyTime} on {dummyDate}
-            </Text>
-          </View>
+            <View style={styles.header}>
+              <IconSymbol 
+                ios_icon_name="trophy.fill" 
+                android_material_icon_name="emoji-events" 
+                size={80} 
+                color="#FFD700" 
+              />
+              <Text style={styles.winTitle}>WINNER!</Text>
+              <Text style={styles.winSubtitle}>Congratulations! You matched the number!</Text>
+            </View>
 
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <IconSymbol 
-              ios_icon_name="arrow.left" 
-              android_material_icon_name="arrow-back" 
-              size={20} 
-              color="#FFFFFF" 
-            />
-            <Text style={styles.backButtonText}>Back to Admin Preview</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </LinearGradient>
-    </View>
+            <View style={styles.resultCard}>
+              <Text style={styles.cardLabel}>Your Snap:</Text>
+              <View style={styles.numberContainer}>
+                <Text style={styles.number}>{userNumberDisplay}</Text>
+              </View>
+            </View>
+
+            <View style={styles.resultCard}>
+              <Text style={styles.cardLabel}>Today&apos;s Number:</Text>
+              <View style={[styles.numberContainer, styles.matchContainer]}>
+                <Text style={styles.number}>{targetNumberDisplay}</Text>
+              </View>
+              <Text style={styles.matchText}>Perfect Match! 🎉</Text>
+            </View>
+
+            <View style={styles.submissionDetailsCard}>
+              <Text style={styles.detailsTitle}>Your Submission Details</Text>
+              
+              <View style={styles.photoContainer}>
+                <View style={styles.placeholderPhoto}>
+                  <IconSymbol 
+                    ios_icon_name="photo.fill" 
+                    android_material_icon_name="image" 
+                    size={60} 
+                    color={colors.textSecondary} 
+                  />
+                  <Text style={styles.placeholderText}>Sample Photo</Text>
+                </View>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <IconSymbol 
+                  ios_icon_name="location.fill" 
+                  android_material_icon_name="location-on" 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={styles.detailText}>{locationText}</Text>
+              </View>
+            </View>
+
+            <View style={styles.prizeCard}>
+              <Text style={styles.prizeAmount}>$25</Text>
+              <Text style={styles.prizeLabel}>Prize Won!</Text>
+              <Text style={styles.prizeSubtext}>Tap below to claim your prize</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.claimButton}
+              onPress={handleClaimPrize}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#FFD700', '#FFA500']}
+                style={styles.claimButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <IconSymbol 
+                  ios_icon_name="gift.fill" 
+                  android_material_icon_name="card-giftcard" 
+                  size={24} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.claimButtonText}>Claim Your Prize</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.watermarkCard}>
+              <IconSymbol 
+                ios_icon_name="person.fill" 
+                android_material_icon_name="person" 
+                size={16} 
+                color={colors.textSecondary} 
+              />
+              <Text style={styles.watermarkText}>
+                Sample result – Admin Preview – {timeDisplay} on {dateDisplay}
+              </Text>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <Text style={styles.backButtonText} onPress={handleClose}>
+                Back to Preview Menu
+              </Text>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </SafeAreaView>
+    </>
   );
 }
 
@@ -194,17 +171,22 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  previewBadge: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 10,
-    padding: 10,
+  adminBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     alignSelf: 'center',
     marginBottom: 20,
   },
-  previewBadgeText: {
-    color: '#FFFFFF',
+  adminBadgeText: {
     fontSize: 12,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   header: {
     alignItems: 'center',
@@ -265,6 +247,55 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontWeight: 'bold',
   },
+  submissionDetailsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  detailsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  photoContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 15,
+    backgroundColor: '#F0F0F0',
+  },
+  placeholderPhoto: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  detailText: {
+    fontSize: 14,
+    color: colors.text,
+    flex: 1,
+  },
   prizeCard: {
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
     borderRadius: 20,
@@ -294,6 +325,30 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
+  watermarkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+  },
+  watermarkText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  buttonContainer: {
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textDecorationLine: 'underline',
+  },
   claimButton: {
     marginBottom: 20,
     borderRadius: 20,
@@ -314,35 +369,6 @@ const styles = StyleSheet.create({
   claimButtonText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  watermarkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-  },
-  watermarkText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 15,
-    padding: 15,
-    gap: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#FFFFFF',
   },
 });

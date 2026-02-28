@@ -52,6 +52,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
+  adminPreviewButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  adminPreviewButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -437,6 +453,11 @@ export default function AdminScreen() {
     }
   };
 
+  const handleAdminPreview = () => {
+    console.log('Admin tapped Admin Preview button');
+    router.push('/admin-preview');
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -469,6 +490,19 @@ export default function AdminScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Panel</Text>
         <Text style={styles.headerSubtitle}>Manage winners and prize claims</Text>
+        
+        <TouchableOpacity 
+          style={styles.adminPreviewButton}
+          onPress={handleAdminPreview}
+        >
+          <IconSymbol 
+            ios_icon_name="eye.fill" 
+            android_material_icon_name="visibility" 
+            size={20} 
+            color="#FFFFFF" 
+          />
+          <Text style={styles.adminPreviewButtonText}>Admin Preview</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView>
