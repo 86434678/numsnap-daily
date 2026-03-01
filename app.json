@@ -1,7 +1,8 @@
+
 {
   "expo": {
     "name": "NumSnap Daily",
-    "slug": "NumSnap Daily",
+    "slug": "numsnap-daily",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon-jte.png",
@@ -78,14 +79,13 @@
         }
       ]
     ],
-    "scheme": "NumSnap Daily",
+    "scheme": "numsnap-daily",
     "experiments": {
       "typedRoutes": true
     },
     "updates": {
       "enabled": true,
-      "url": "https://u.expo.dev/257bacd6-9252-4b49-92bd-05897271c77a",
-      "runtimeVersion": "1.0.0"
+      "url": "https://u.expo.dev/257bacd6-9252-4b49-92bd-05897271c77a"
     },
     "extra": {
       "router": {},
