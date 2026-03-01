@@ -101,20 +101,46 @@ export default function RevealResultScreen() {
 
   console.log('RevealResultScreen: Loading reveal data, params:', params);
 
+  const fetchRevealData = React.useCallback(async () => {
+    console.log('[API] Requesting /api/reveal-result...');
+    setLoading(true);
+    try {
+      const data = await authenticatedGet<RevealData>('/api/reveal-result');
+      console.log('[API] /api/reveal-result response:', data);
+      setRevealData(data);
+    } catch (err: any) {
+      console.error('RevealResultScreen: Error fetching reveal data:', err);
+      const message = err?.message || 'Failed to load results. Please try again.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // If revealData was passed as params from confirm-submission, use it directly
-    if (params.isMatch !== undefined && params.userNumber && params.targetNumber && params.submissionTime && params.userName) {
+    const isMatchParam = params.isMatch;
+    const userNumberParam = params.userNumber;
+    const targetNumberParam = params.targetNumber;
+    const submissionTimeParam = params.submissionTime;
+    const userNameParam = params.userName;
+    const submissionIdParam = params.submissionId;
+    const photoUrlParam = params.photoUrl;
+    const locationParam = params.location;
+    const isManualEntryParam = params.isManualEntry;
+
+    if (isMatchParam !== undefined && userNumberParam && targetNumberParam && submissionTimeParam && userNameParam) {
       console.log('RevealResultScreen: Using revealData from params');
       
-      const isMatch = params.isMatch === 'true';
-      const userNumber = parseInt(params.userNumber as string, 10);
-      const targetNumber = params.targetNumber as string;
-      const submissionTime = params.submissionTime as string;
-      const userName = params.userName as string;
-      const submissionId = params.submissionId as string || '';
-      const photoUrl = params.photoUrl as string;
-      const location = params.location ? JSON.parse(params.location as string) : undefined;
-      const isManualEntry = params.isManualEntry === 'true';
+      const isMatch = isMatchParam === 'true';
+      const userNumber = parseInt(userNumberParam as string, 10);
+      const targetNumber = targetNumberParam as string;
+      const submissionTime = submissionTimeParam as string;
+      const userName = userNameParam as string;
+      const submissionId = submissionIdParam as string || '';
+      const photoUrl = photoUrlParam as string;
+      const location = locationParam ? JSON.parse(locationParam as string) : undefined;
+      const isManualEntry = isManualEntryParam === 'true';
       
       setRevealData({
         isMatch,
@@ -132,23 +158,7 @@ export default function RevealResultScreen() {
       // Otherwise fetch from API (e.g. user navigated directly from home screen)
       fetchRevealData();
     }
-  }, []);
-
-  const fetchRevealData = async () => {
-    console.log('[API] Requesting /api/reveal-result...');
-    setLoading(true);
-    try {
-      const data = await authenticatedGet<RevealData>('/api/reveal-result');
-      console.log('[API] /api/reveal-result response:', data);
-      setRevealData(data);
-    } catch (err: any) {
-      console.error('RevealResultScreen: Error fetching reveal data:', err);
-      const message = err?.message || 'Failed to load results. Please try again.';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [params.isMatch, params.userNumber, params.targetNumber, params.submissionTime, params.userName, params.submissionId, params.photoUrl, params.location, params.isManualEntry, fetchRevealData]);
 
   if (loading) {
     return (
